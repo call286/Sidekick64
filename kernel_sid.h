@@ -37,8 +37,9 @@
 //
 // choose whether to output sound via the headphone jack (PWM), otherwise HDMI audio will be used (higher delay)
 //
+#ifndef USE_PWM_DIRECT
 #define USE_PWM_DIRECT
-
+#endif
 //
 // sample rate
 //

@@ -179,7 +179,10 @@ int main (void)
     while ( 1 )
     {
         // sendKeypress
-        *((char *)(0xdf01)) = cgetc();
+        if (kbhit() != 0)
+          *((char *)(0xdf01)) = cgetc();
+        else
+          *((char *)(0xdf01)) = 92; //pound key, unused
         updateScreen();
     }
 
