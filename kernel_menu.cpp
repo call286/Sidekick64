@@ -70,7 +70,10 @@ static u32 prgSize AAA;
 static unsigned char prgData[ 65536 ] AAA;
 
 u32 prgSizeLaunch AAA;
-unsigned char prgDataLaunch[ 65536 ] AAA;
+//increasing size of prgDataLaunch so that we
+//can either store a prg or a crt in it
+//unsigned char prgDataLaunch[ 65536 ] AAA;
+unsigned char prgDataLaunch[ 1025*1024 ] AAA;
 
 // CBM80 to launch the menu
 static unsigned char cart_pool[ 16384 + 128 ] AAA;
@@ -289,6 +292,9 @@ CVCHIQDevice		*pVCHIQ;
 #endif
 
 //u32 temperature;
+#ifdef WITH_NET
+CSidekickNet *pSidekickNet;//used for c64screen to display net config params
+#endif
 
 boolean CKernelMenu::Initialize( void )
 {
@@ -314,7 +320,7 @@ boolean CKernelMenu::Initialize( void )
 
 	if ( bOK ) bOK = m_Interrupt.Initialize();
 	if ( bOK ) bOK = m_Timer.Initialize();
-	m_EMMC.Initialize();
+	if ( bOK ) bOK = m_EMMC.Initialize();
 
 #ifdef COMPILE_MENU_WITH_SOUND
 	pTimer = &m_Timer;
@@ -385,6 +391,20 @@ boolean CKernelMenu::Initialize( void )
 		//memcpy( 0 + charset+8*(91), skcharlogo_raw, 224 );
 		//writeFile( logger, "SD:", "font.temp", &charset[2048], 2048 );
 	} 
+
+	#ifdef WITH_NET
+		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.setSidekickKernelUpdatePath( 64 );
+		if ( m_SidekickNet.ConnectOnBoot() ){
+			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
+			if (bNetOK){
+				//m_SidekickNet.CheckForSidekickKernelUpdate();
+			  m_SidekickNet.UpdateTime();
+			}
+		}
+		pSidekickNet = m_SidekickNet.GetPointer();
+	#endif
 
 	readSettingsFile();
 	applySIDSettings();
@@ -512,6 +532,14 @@ void CKernelMenu::Run( void )
 
 		asm volatile ("wfi");
 
+		#ifdef WITH_NET
+		if ( m_SidekickNet.isPRGDownloadReady()){
+			launchKernel = m_SidekickNet.getCSDBDownloadLaunchType();
+			strcpy(FILENAME, m_SidekickNet.getCSDBDownloadFilename());
+			lastChar = 0xfffffff;
+		}
+		#endif
+		
 		if ( launchKernel )
 		{
 			m_InputPin.DisableInterrupt();
@@ -561,6 +589,17 @@ void CKernelMenu::Run( void )
 			warmCache( pFIQ );
 			doneWithHandling = 1;
 			updateMenu = 0;
+			#ifdef WITH_NET
+				m_InputPin.DisableInterrupt();
+				m_InputPin.DisconnectInterrupt();
+				EnableIRQs();
+				m_SidekickNet.updateSystemMonitor( m_Memory.GetHeapFreeSpace(HEAP_ANY), m_CPUThrottle.GetTemperature());
+				m_SidekickNet.handleQueuedNetworkAction();
+				DisableIRQs();
+				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
+				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+			#endif
+			
 		}
 	}
 
@@ -791,7 +830,7 @@ int main( void )
 	extern void KernelKernalRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME );
 	extern void KernelGeoRAMRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu );
 	extern void KernelLaunchRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, bool hasData = false, u8 *prgDataExt = NULL, u32 prgSizeExt = 0, u32 c128PRG = 0, u32 playingPSID = 0 );
-	extern void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, const char *menuItemStr, const char *FILENAME_KERNAL = NULL );
+	extern void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, const char *menuItemStr, , bool hasData = false, u8 *crtDataExt = NULL, u32 crtSizeExt = 0, const char *FILENAME_KERNAL = NULL );
 	extern void KernelFC3Run( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME = NULL, const char *FILENAME_KERNAL = NULL );
 	extern void KernelKCSRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME = NULL, const char *FILENAME_KERNAL = NULL );
 	extern void KernelSS5Run( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME = NULL, const char *FILENAME_KERNAL = NULL );
@@ -909,9 +948,13 @@ int main( void )
 			break;
 		case 5:
 			if ( subHasKernal == -1 )
-				KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr ); else
-				KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, filenameKernal ); 
+				KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, false, NULL, 0 );else
+		 		KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, false, NULL, 0, filenameKernal ); 
 			break;
+		case 9:
+			if ( subHasKernal == -1 )
+				KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, true, prgDataLaunch, prgSizeLaunch );else
+				KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, true, prgDataLaunch, prgSizeLaunch, filenameKernal );
 		case 6:
 			if ( subHasKernal == -1 )
 				KernelFC3Run( kernel.m_InputPin, &kernel ); else

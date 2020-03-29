@@ -242,6 +242,10 @@ CInterruptSystem	*pInterrupt;
 CVCHIQDevice		*pVCHIQ;
 #endif
 
+#ifdef WITH_NET
+CSidekickNet *pSidekickNet;//used for c64screen to display net config params
+#endif
+
 boolean CKernelMenu::Initialize( void )
 {
 	boolean bOK = TRUE;
@@ -330,6 +334,20 @@ boolean CKernelMenu::Initialize( void )
 		memcpy( 1024 + charset+8*(91), skcharlogo_raw, 224 );
 		memcpy( 2048 + charset+8*(91), skcharlogo_raw, 224 );
 	} 
+
+	#ifdef WITH_NET
+		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.setSidekickKernelUpdatePath( 264 );
+		if ( m_SidekickNet.ConnectOnBoot() ){
+			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
+			if (bNetOK){
+				//m_SidekickNet.CheckForSidekickKernelUpdate();
+			  m_SidekickNet.UpdateTime();
+			}
+		}
+		pSidekickNet = m_SidekickNet.GetPointer();
+	#endif
 
 	readSettingsFile();
 	applySIDSettings();
@@ -441,7 +459,7 @@ void CKernelMenu::Run( void )
 			lastChar = 0xfffffff;
 			doneWithHandling = 1;
 			updateMenu = 0;
-
+			
 			if ( launchKernel == 5 ) 
 			// either: launch CRT, no need to call an external RPi-kernel
 			// or: NeoRAM - Autostart
@@ -478,6 +496,21 @@ void CKernelMenu::Run( void )
 				}
 			} else
 			{
+				//to test this, please modify the ifdef and the code inside
+				#ifdef WITH_NET
+					if (m_SidekickNet.isAnyNetworkActionQueued())
+					{
+						m_InputPin.DisableInterrupt();
+						m_InputPin.DisconnectInterrupt();
+						EnableIRQs();
+						m_SidekickNet.handleQueuedNetworkAction();
+					
+						DisableIRQs();
+						m_InputPin.ConnectInterrupt( this->FIQHandler, this );
+						m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+					}
+				#endif
+				
 				CACHE_PRELOAD_DATA_CACHE( c64screen, 1024, CACHE_PRELOADL2STRM );
 				CACHE_PRELOAD_DATA_CACHE( c64color, 1024, CACHE_PRELOADL2STRM );
 				// trigger IRQ on C16/+4 which tells the menu code that the new screen is ready
