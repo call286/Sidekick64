@@ -78,6 +78,10 @@ extern int screenType;
 #include "helpers.h"
 #include "crt.h"
 
+#ifdef WITH_NET
+#include "net.h"
+#endif
+
 //#ifdef USE_OLED
 #include "oled.h"
 #include "splash_sidekick64.h"
@@ -109,6 +113,9 @@ public:
 #endif
 		m_InputPin( PHI2, GPIOModeInput, &m_Interrupt ),
 		m_EMMC( &m_Interrupt, &m_Timer, 0 )
+#ifdef WITH_NET		
+		,m_SidekickNet( &m_Interrupt, &m_Timer, &m_Scheduler, &m_EMMC )
+#endif
 	{
 	}
 
@@ -122,7 +129,6 @@ public:
 
 private:
 	static void FIQHandler( void *pParam );
-
 public:
 	// do not change this order
 	CMemorySystem		m_Memory;
@@ -144,6 +150,9 @@ public:
 #endif
 	CGPIOPinFIQ			m_InputPin;
 	CEMMCDevice			m_EMMC;
+#ifdef WITH_NET	
+	CSidekickNet    m_SidekickNet;
+#endif
 };
 
 #endif

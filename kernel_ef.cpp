@@ -381,7 +381,8 @@ static void initScreenAndLEDCodes()
 #ifdef COMPILE_MENU
 static void KernelEFFIQHandler_nobank( void *pParam );
 static void KernelEFFIQHandler( void *pParam );
-void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, const char *menuItemStr )
+void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, const char *menuItemStr, bool hasData = false, u8 *crtDataExt = NULL, u32 crtSizeExt = 0 )
+
 #else
 void CKernelEF::Run( void )
 #endif
@@ -399,7 +400,18 @@ void CKernelEF::Run( void )
 
 	// read .CRT
 	ef.flash_cacheoptimized = (u8 *)( ( (u64)&flash_cacheoptimized_pool[ 0 ] + 128 ) & ~127 );
-	readCRTFile( logger, &header, (char*)DRIVE, (char*)FILENAME, (u8*)ef.flash_cacheoptimized, &ef.bankswitchType, &ef.ROM_LH, &ef.nBanks );
+	#ifdef COMPILE_MENU
+	if ( !hasData )
+	{
+	#endif
+		readCRTFile( logger, &header, (char*)DRIVE, (char*)FILENAME, (u8*)ef.flash_cacheoptimized, &ef.bankswitchType, &ef.ROM_LH, &ef.nBanks );
+	#ifdef COMPILE_MENU
+	}
+	else{
+		parseCRTInMemory( logger, &header, (u8*)ef.flash_cacheoptimized, &ef.bankswitchType, &ef.ROM_LH, &ef.nBanks, false, crtDataExt, crtSizeExt );
+	}
+	#endif
+
 
 	ef.eapiCRTModified = 0;
 
@@ -929,4 +941,3 @@ cleanup:
 
 	OUTPUT_LATCH_AND_FINISH_BUS_HANDLING
 }
-
