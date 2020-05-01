@@ -136,6 +136,11 @@ CInterruptSystem	*pInterrupt;
 CVCHIQDevice		*pVCHIQ;
 #endif
 
+#ifdef WITH_NET
+CNetConfig *pNetConfig; //used for c64screen to display net config params
+CMachineInfo *pMachineInfo;//used for c64screen to display raspi model name
+//CNetSubSystem * pNet;
+#endif
 
 boolean CKernelMenu::Initialize( void )
 {
@@ -161,7 +166,7 @@ boolean CKernelMenu::Initialize( void )
 
 	if ( bOK ) bOK = m_Interrupt.Initialize();
 	if ( bOK ) bOK = m_Timer.Initialize();
-	m_EMMC.Initialize();
+	if ( bOK ) bOK = m_EMMC.Initialize();
 
 #ifdef COMPILE_MENU_WITH_SOUND
 	pTimer = &m_Timer;
@@ -171,6 +176,15 @@ boolean CKernelMenu::Initialize( void )
 	if ( bOK ) bOK = m_VCHIQ.Initialize();
 	pVCHIQ = &m_VCHIQ;
 #endif
+
+#ifdef WITH_NET
+	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
+	boolean bStoreFile = bNetOK ? m_SidekickNet.CheckForSidekickKernelUpdate() : false;
+	if ( bStoreFile ) m_SidekickNet.StoreSidekickKernelFile();
+	pNetConfig = m_SidekickNet.GetNetConfig();
+	if (bNetOK) m_SidekickNet.UpdateTime();
+#endif
+
 	latchSetClearImm( LATCH_LED0, LATCH_LED1to3 );
 
 	// initialize ARM cycle counters (for accurate timing)
@@ -346,6 +360,19 @@ void CKernelMenu::Run( void )
 			renderC64();
 			doneWithHandling = 1;
 			updateMenu = 0;
+			//to test this, please modify the ifdef and the code inside
+			#ifdef WITH_NET_EXPERIMENTAL
+				m_InputPin.DisableInterrupt();
+				m_InputPin.DisconnectInterrupt();
+				EnableIRQs();
+				size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
+				logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
+				//m_SidekickNet.contactDevServer();
+				DisableIRQs();
+				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
+				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+			#endif
+			
 		}
 	}
 
