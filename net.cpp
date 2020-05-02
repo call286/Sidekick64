@@ -43,13 +43,11 @@
 static const char NTPServer[]    = "pool.ntp.org";
 static const int nTimeZone       = 2*60;		// minutes diff to UTC
 static const char DRIVE[] = "SD:";
-static const unsigned nDocMaxSize = 800*1024;
 // Sidekick Developer HTTP Server configuration
-//Fill this value with the hostname of your development webserver
-//to activate the automated kernel file update via HTTP 
 static const char KernelUpdateFile[] = "/kernel8.img";
 //change the path of KernelUpdateFile to your needs
 //nDocMaxSize reserved 800 KB as the maximum size of the kernel file
+static const unsigned nDocMaxSize = 800*1024;
 static const char FILENAME_HTTPDUMP[] = "SD:kernel8.img";
 
 CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer, CScheduler * pScheduler  )
@@ -150,7 +148,6 @@ boolean CSidekickNet::UpdateTime(void)
 	if (CTimer::Get ()->SetTime (nTime, FALSE))
 	{
 		logger->Write ("CSidekickNet::UpdateTime", LogNotice, "System time updated");
-		logger->Write ("CSidekickNet::UpdateTime", LogNotice, "is %s", CSidekickNet::getTimeString() );
 	}
 	else
 	{
@@ -160,10 +157,8 @@ boolean CSidekickNet::UpdateTime(void)
 }
 
 
-//example that looks for the presence of a file on a pre-defined HTTP Server
-//file is being read and preserved in memory
-//for the purpose to replace the kernel8.img file on SD card
-//in method StoreSidekickKernelFile
+//looks for the presence of a file on a pre-defined HTTP Server
+//file is being read and sotred on the sd card
 boolean CSidekickNet::CheckForSidekickKernelUpdate()
 {
 	if ( m_DevHttpHost == 0 )
