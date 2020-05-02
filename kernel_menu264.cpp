@@ -137,6 +137,10 @@ CInterruptSystem	*pInterrupt;
 CVCHIQDevice		*pVCHIQ;
 #endif
 
+#ifdef WITH_NET
+CSidekickNet *pSidekickNet;//used for c64screen to display net config params
+#endif
+
 boolean CKernelMenu::Initialize( void )
 {
 	boolean bOK = TRUE;
@@ -171,6 +175,16 @@ boolean CKernelMenu::Initialize( void )
 	if ( bOK ) bOK = m_VCHIQ.Initialize();
 	pVCHIQ = &m_VCHIQ;
 #endif
+
+#ifdef WITH_NET
+	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
+	if (bNetOK){
+		m_SidekickNet.CheckForSidekickKernelUpdate("/sidekick264/kernel8.img");
+	  m_SidekickNet.UpdateTime();
+		pSidekickNet = m_SidekickNet.GetPointer();
+	}
+#endif
+
 	latchSetClearImm( LATCH_LED0, LATCH_LED1to3 );
 
 	// initialize ARM cycle counters (for accurate timing)

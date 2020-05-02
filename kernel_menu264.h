@@ -75,6 +75,10 @@
 #include "crt.h"
 #include "mygpiopinfiq.h"
 
+#ifdef WITH_NET		
+#include "net.h"
+#endif
+
 #ifdef USE_OLED
 #include "oled.h"
 #include "splash_sidekick264.h"
@@ -102,6 +106,9 @@ public:
 #endif
 		m_InputPin( PHI2, GPIOModeInput, &m_Interrupt ),
 		m_EMMC( &m_Interrupt, &m_Timer, 0 )
+#ifdef WITH_NET		
+		,m_SidekickNet( &m_Interrupt, &m_Timer, &m_Scheduler )
+#endif		
 	{
 	}
 
@@ -137,6 +144,9 @@ public:
 #endif
 	CGPIOPinFIQ2		m_InputPin;
 	CEMMCDevice			m_EMMC;
+#ifdef WITH_NET	
+	CSidekickNet    m_SidekickNet;
+#endif
 };
 
 #endif
