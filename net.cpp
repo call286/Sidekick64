@@ -176,9 +176,9 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
 		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogPanic, "Cannot allocate document buffer");
 	}
 	logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogNotice, 
-		"Now fetching kernel file from NET_DEV_SERVER."
+		"Now fetching kernel file from http://%s%s.", m_DevHttpHost, (const char *) sKernelFilePath
 	);
-	m_storeFile = GetFileViaHTTP ( m_DevHttpHost, sKernelFilePath, m_pFileBuffer, m_FileLength);
+	m_storeFile = GetFileViaHTTP ( m_DevHttpHost, (const char *) sKernelFilePath, m_pFileBuffer, m_FileLength);
 	if ( m_storeFile ){
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", m_FileLength
