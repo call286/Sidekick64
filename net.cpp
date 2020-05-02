@@ -44,7 +44,7 @@ static const char NTPServer[]    = "pool.ntp.org";
 static const int nTimeZone       = 2*60;		// minutes diff to UTC
 static const char DRIVE[] = "SD:";
 // Sidekick Developer HTTP Server configuration
-static const char KernelUpdateFile[] = "/kernel8.img";
+//static const char KernelUpdateFile[] = "/kernel8.img";
 //change the path of KernelUpdateFile to your needs
 //nDocMaxSize reserved 800 KB as the maximum size of the kernel file
 static const unsigned nDocMaxSize = 800*1024;
@@ -156,10 +156,9 @@ boolean CSidekickNet::UpdateTime(void)
 	return false;
 }
 
-
 //looks for the presence of a file on a pre-defined HTTP Server
 //file is being read and sotred on the sd card
-boolean CSidekickNet::CheckForSidekickKernelUpdate()
+boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
 {
 	if ( m_DevHttpHost == 0 )
 	{
@@ -179,7 +178,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogNotice, 
 		"Now fetching kernel file from NET_DEV_SERVER."
 	);
-	m_storeFile = GetFileViaHTTP ( m_DevHttpHost, KernelUpdateFile, m_pFileBuffer, m_FileLength);
+	m_storeFile = GetFileViaHTTP ( m_DevHttpHost, sKernelFilePath, m_pFileBuffer, m_FileLength);
 	if ( m_storeFile ){
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", m_FileLength

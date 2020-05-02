@@ -53,7 +53,7 @@ public:
 	};
 	CSidekickNet * GetPointer(){ return this;};
 	boolean Initialize ( void );
-	boolean CheckForSidekickKernelUpdate ( void );
+	boolean CheckForSidekickKernelUpdate ( CString );
 	boolean GetFileViaHTTP (const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void contactDevServer();

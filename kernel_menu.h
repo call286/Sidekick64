@@ -72,7 +72,8 @@
 #include "latch.h"
 #include "helpers.h"
 #include "crt.h"
-#ifdef WITH_NET		
+
+#ifdef WITH_NET
 #include "net.h"
 #endif
 

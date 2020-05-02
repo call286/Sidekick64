@@ -178,7 +178,7 @@ boolean CKernelMenu::Initialize( void )
 #ifdef WITH_NET
 	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 	if (bNetOK){
-		m_SidekickNet.CheckForSidekickKernelUpdate();
+		m_SidekickNet.CheckForSidekickKernelUpdate("/sidekick64/kernel8.img");
 	  m_SidekickNet.UpdateTime();
 		pSidekickNet = m_SidekickNet.GetPointer();
 	}
