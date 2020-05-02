@@ -947,7 +947,7 @@ void printNetworkScreen()
 {
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
-	printC64( 0,  1, "      .- Sidekick64 -- Frenetic -.      ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 
 	const u32 x = 1;
@@ -1004,6 +1004,8 @@ void printNetworkScreen()
 	printC64( x+1, y1+18, "System time", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+19, strTimeDate, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
+	printSidekickLogo();
+
 	startInjectCode();
 	injectPOKE( 53280, skinValues.SKIN_MENU_BORDER_COLOR );
 	injectPOKE( 53281, skinValues.SKIN_MENU_BACKGROUND_COLOR );
