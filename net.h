@@ -34,6 +34,7 @@
 #include <circle/interrupt.h>
 #include <circle/timer.h>
 #include <circle/logger.h>
+#include <circle/machineinfo.h>
 #include <circle/sched/scheduler.h>
 #include <circle/usb/usbhcidevice.h>
 #include <circle/net/netsubsystem.h>
@@ -50,20 +51,22 @@ public:
 	~CSidekickNet( void )
 	{
 	};
+	CSidekickNet * GetPointer(){ return this;};
 	boolean Initialize ( void );
-	boolean StoreSidekickKernelFile ( void );
 	boolean CheckForSidekickKernelUpdate ( void );
 	boolean GetFileViaHTTP (const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void contactDevServer();
-	
+	CString getTimeString();
 	CNetConfig * GetNetConfig();
+	CString getRaspiModelName();
 	
 private:
 	CUSBHCIDevice     m_USBHCI;
+	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
 	CScheduler			  * m_pScheduler;
 	CTimer				    * m_pTimer;
-	CNetSubSystem     m_Net;
+	CNetSubSystem       m_Net;
 	boolean m_isActive;
 	boolean m_storeFile;
 	unsigned m_FileLength;

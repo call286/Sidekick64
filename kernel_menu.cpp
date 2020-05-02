@@ -137,9 +137,7 @@ CVCHIQDevice		*pVCHIQ;
 #endif
 
 #ifdef WITH_NET
-CNetConfig *pNetConfig; //used for c64screen to display net config params
-CMachineInfo *pMachineInfo;//used for c64screen to display raspi model name
-//CNetSubSystem * pNet;
+CSidekickNet *pSidekickNet;//used for c64screen to display net config params
 #endif
 
 boolean CKernelMenu::Initialize( void )
@@ -179,10 +177,11 @@ boolean CKernelMenu::Initialize( void )
 
 #ifdef WITH_NET
 	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
-	boolean bStoreFile = bNetOK ? m_SidekickNet.CheckForSidekickKernelUpdate() : false;
-	if ( bStoreFile ) m_SidekickNet.StoreSidekickKernelFile();
-	pNetConfig = m_SidekickNet.GetNetConfig();
-	if (bNetOK) m_SidekickNet.UpdateTime();
+	if (bNetOK){
+		m_SidekickNet.CheckForSidekickKernelUpdate();
+	  m_SidekickNet.UpdateTime();
+		pSidekickNet = m_SidekickNet.GetPointer();
+	}
 #endif
 
 	latchSetClearImm( LATCH_LED0, LATCH_LED1to3 );

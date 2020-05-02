@@ -34,7 +34,6 @@
 #include "net.h"
 #include "helpers.h"
 
-//#include <circle/net/ntpdaemon.h>
 #include <circle/net/ntpclient.h>
 #include <circle/net/dnsclient.h>
 #include <circle/net/httpclient.h>
@@ -132,7 +131,7 @@ boolean CSidekickNet::UpdateTime(void)
 	CDNSClient DNSClient (&m_Net);
 	if (!DNSClient.Resolve (NTPServer, &NTPServerIP))
 	{
-		CLogger::Get ()->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot resolve: %s",
+		logger->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot resolve: %s",
 					(const char *) NTPServer);
 
 		return false;
@@ -142,7 +141,7 @@ boolean CSidekickNet::UpdateTime(void)
 	unsigned nTime = NTPClient.GetTime (NTPServerIP);
 	if (nTime == 0)
 	{
-		CLogger::Get ()->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot get time from %s",
+		logger->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot get time from %s",
 					(const char *) NTPServer);
 
 		return false;
@@ -150,13 +149,13 @@ boolean CSidekickNet::UpdateTime(void)
 
 	if (CTimer::Get ()->SetTime (nTime, FALSE))
 	{
-		CLogger::Get ()->Write ("CSidekickNet::UpdateTime", LogNotice, "System time updated");
+		logger->Write ("CSidekickNet::UpdateTime", LogNotice, "System time updated");
+		logger->Write ("CSidekickNet::UpdateTime", LogNotice, "is %s", CSidekickNet::getTimeString() );
 	}
 	else
 	{
-		CLogger::Get ()->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot update system time");
+		logger->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot update system time");
 	}
-
 	return false;
 }
 
@@ -186,13 +185,6 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 		"Now fetching kernel file from NET_DEV_SERVER."
 	);
 	m_storeFile = GetFileViaHTTP ( m_DevHttpHost, KernelUpdateFile, m_pFileBuffer, m_FileLength);
-	return m_storeFile;
-}
-
-//the only reason why this method is split from the above one is for the
-//sake of shady experiments with improving the boot duration
-boolean CSidekickNet::StoreSidekickKernelFile()
-{
 	if ( m_storeFile ){
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", m_FileLength
@@ -209,6 +201,7 @@ boolean CSidekickNet::StoreSidekickKernelFile()
 }
 
 CNetConfig * CSidekickNet::GetNetConfig(){
+	assert (m_isActive);
 	return m_Net.GetConfig ();
 }
 
@@ -264,4 +257,23 @@ boolean CSidekickNet::GetFileViaHTTP (const char * pHost, const char * pFile, ch
 	nLengthRead = nLength;
 
 	return TRUE;
+}
+
+CString CSidekickNet::getTimeString()
+{
+	//the most complicated and ugly way to get the data into the right form...
+	CString *pTimeString = m_pTimer->GetTimeString();
+	CString Buffer;
+	if (pTimeString != 0)
+	{
+		Buffer.Append (*pTimeString);
+	}
+	delete pTimeString;
+	//logger->Write( "getTimeString", LogDebug, "%s ", Buffer);
+	return Buffer;
+}
+
+CString CSidekickNet::getRaspiModelName()
+{
+	return m_pMachineInfo->Get()->GetMachineName ();
 }

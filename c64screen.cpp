@@ -41,9 +41,7 @@
 
 extern CLogger *logger;
 #ifdef WITH_NET
-extern CTimer &pTimer;
-extern CNetConfig &pNetConfig;
-extern CMachineInfo &pMachineInfo;
+extern CSidekickNet * pSidekickNet;
 #include "circle/version.h"
 #endif
 
@@ -830,21 +828,6 @@ TODO: add real functionality here
 
 extern int subGeoRAM, subSID, subHasKernal;
 
-#ifdef WITH_NET
-CString getTimeString()
-{
-	//the most complicated and ugly way to get the data into the right form...
-	CString *pTimeString = pTimer.GetTimeString ();
-	CString Buffer;
-	if (pTimeString != 0)
-	{
-		Buffer.Append (*pTimeString);
-	}
-	delete pTimeString;
-	return Buffer;
-}
-#endif
-
 void printSidekickLogo()
 {
 	if ( skinFontLoaded )
@@ -971,7 +954,7 @@ void printNetworkScreen()
 	u32 y1 = 2;
 
 	CString strTimeDate = "";
-	strTimeDate.Append( getTimeString());
+	strTimeDate.Append( pSidekickNet->getTimeString());
 	
 	CString strIpAdress   = "IP address:      "; 
 	CString strNetMask    = "Netmask:         "; 
@@ -983,23 +966,21 @@ void printNetworkScreen()
 	CString strKernelTS2  = "                 ";
 	CString strHelper;
 	
-	pNetConfig.GetIPAddress ()->Format (&strHelper);
+	pSidekickNet->GetNetConfig()->GetIPAddress ()->Format (&strHelper);
 	strIpAdress.Append( strHelper );
 
-	pNetConfig.GetDefaultGateway ()->Format (&strHelper);
+	pSidekickNet->GetNetConfig()->GetDefaultGateway ()->Format (&strHelper);
 	strDefGateway.Append( strHelper );
 
-	pNetConfig.GetDNSServer ()->Format (&strHelper);
+	pSidekickNet->GetNetConfig()->GetDNSServer ()->Format (&strHelper);
 	strDNSServer.Append( strHelper );
 
-	strDhcpUsed.Append( pNetConfig.IsDHCPUsed() ? "Yes" : "No" );
+	strDhcpUsed.Append( pSidekickNet->GetNetConfig()->IsDHCPUsed() ? "Yes" : "No" );
 
 	strKernelCV.Append( CIRCLE_VERSION_STRING );
 	strKernelTS.Append( __DATE__ );
 	strKernelTS2.Append( __TIME__ );
 
-	CString strRaspiModel = pMachineInfo.Get()->GetMachineName ();
-	
 	printC64( x+1, y1+2, "Network settings", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+3, strIpAdress,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
@@ -1018,7 +999,7 @@ void printNetworkScreen()
 	y1=2;
 	
 	printC64( x+1, y1+15, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( x+1, y1+16, strRaspiModel, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( x+1, y1+16, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
 	printC64( x+1, y1+18, "System time", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+19, strTimeDate, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
