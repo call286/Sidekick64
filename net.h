@@ -59,8 +59,9 @@ public:
 	~CSidekickNet( void )
 	{
 	};
-	CSidekickNet * GetPointer(){ return this;};
+	CSidekickNet * GetPointer(){ return this; };
 	boolean Initialize ( void );
+	boolean IsRunning ( void );
 	boolean CheckForSidekickKernelUpdate ( CString );
 	boolean GetFileViaHTTP (const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
@@ -88,6 +89,7 @@ private:
 	char * m_pFileBuffer;
 	const char * m_DevHttpHost;
 	const char * m_SidekickKernelLocation;
+	TMachineModel m_PiModel;
 };
 
 #endif

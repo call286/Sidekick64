@@ -49,7 +49,7 @@ static const char DRIVE[] = "SD:";
 //static const char KernelUpdateFile[] = "/kernel8.img";
 //change the path of KernelUpdateFile to your needs
 //nDocMaxSize reserved 800 KB as the maximum size of the kernel file
-static const unsigned nDocMaxSize = 800*1024;
+static const unsigned nDocMaxSize = 900*1024;
 static const char FILENAME_HTTPDUMP[] = "SD:kernel8.img";
 
 #ifdef WITH_WLAN
@@ -69,11 +69,19 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_WPASupplicant (CONFIG_FILE),
 #endif
 		m_isActive( false ),
-		m_FileLength( 0 )
+		m_FileLength( 0 ),
+		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () )
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
 	assert (& m_USBHCI != 0);
+
+	if ( m_PiModel != MachineModel3APlus && m_PiModel != MachineModel3BPlus)
+	{
+		logger->Write( "CSidekickNet::Initialize", LogWarning, 
+			"Warning: The model of Raspberry Pi you are using is not a model supported by Sidekick64/264!"
+		);
+	}
 
 	#ifdef NET_DEV_SERVER
 	  m_DevHttpHost = (const char *) NET_DEV_SERVER;
@@ -86,6 +94,11 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 	//timezone is not really related to net stuff, it could go somewhere else
 	m_pTimer->SetTimeZone (nTimeZone);
 }
+
+boolean CSidekickNet::IsRunning ()
+{
+	 return m_isActive; 
+};
 
 boolean CSidekickNet::Initialize()
 {
@@ -120,6 +133,14 @@ boolean CSidekickNet::Initialize()
 		);
 		return false;
 	}
+#else
+	if ( m_PiModel == MachineModel3APlus )
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Your Raspberry Pi model (3A+) doesn't have an ethernet socket. Skipping init of CNetSubSystem."
+		);
+		return false;
+	}
 #endif
 	if (!m_Net.Initialize (false))
 	{
@@ -135,7 +156,7 @@ boolean CSidekickNet::Initialize()
 			"Couldn't initialize instance of CWPASupplicant."
 		);
 		return false;
-	}	
+	}
 #endif
 	unsigned sleepCount = 0;
 #ifdef WITH_WLAN
@@ -148,7 +169,14 @@ boolean CSidekickNet::Initialize()
 		m_pScheduler->MsSleep (100);
 		sleepCount ++;
 	}
-	
+#ifdef WITH_WLAN
+	if (f_mount ( 0, DRIVE, 0) != FR_OK)
+	{
+		logger->Write ("CSidekickNet::Initialize", LogError,
+				"Cannot unmount drive: %s", DRIVE);
+		return false;
+	}
+#endif
 	if (!m_Net.IsRunning () && sleepCount >= sleepLimit){
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
 			"Network connection is not running - is ethernet cable not attached?"
@@ -158,10 +186,6 @@ boolean CSidekickNet::Initialize()
 
 	//net connection is up and running now
 	m_isActive = true;
-
-	//TODO: Decide if we really need an ntp daemon or if we can get away with
-	//a simpler single ntpclient call, that requires more lines of code
-	//new CNTPDaemon ("pool.ntp.org", &m_Net);
 	return true;
 }
 

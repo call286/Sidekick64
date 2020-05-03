@@ -879,16 +879,26 @@ void printNetworkScreen()
 	CString strKernelTS2  = "                 ";
 	CString strHelper;
 	
-	pSidekickNet->GetNetConfig()->GetIPAddress ()->Format (&strHelper);
-	strIpAdress.Append( strHelper );
+	if ( pSidekickNet->IsRunning() )
+	{
+		pSidekickNet->GetNetConfig()->GetIPAddress ()->Format (&strHelper);
+		strIpAdress.Append( strHelper );
 
-	pSidekickNet->GetNetConfig()->GetDefaultGateway ()->Format (&strHelper);
-	strDefGateway.Append( strHelper );
+		pSidekickNet->GetNetConfig()->GetDefaultGateway ()->Format (&strHelper);
+		strDefGateway.Append( strHelper );
 
-	pSidekickNet->GetNetConfig()->GetDNSServer ()->Format (&strHelper);
-	strDNSServer.Append( strHelper );
+		pSidekickNet->GetNetConfig()->GetDNSServer ()->Format (&strHelper);
+		strDNSServer.Append( strHelper );
 
-	strDhcpUsed.Append( pSidekickNet->GetNetConfig()->IsDHCPUsed() ? "Yes" : "No" );
+		strDhcpUsed.Append( pSidekickNet->GetNetConfig()->IsDHCPUsed() ? "Yes" : "No" );
+	}
+	else
+	{
+		strIpAdress.Append( "-" );
+		strDefGateway.Append( "-" );
+		strDNSServer.Append( "-" );
+		strDhcpUsed.Append( "-" );
+	}
 
 	strKernelCV.Append( CIRCLE_VERSION_STRING );
 	strKernelTS.Append( __DATE__ );

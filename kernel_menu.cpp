@@ -180,8 +180,8 @@ boolean CKernelMenu::Initialize( void )
 	if (bNetOK){
 		m_SidekickNet.CheckForSidekickKernelUpdate("/sidekick64/kernel8.img");
 	  m_SidekickNet.UpdateTime();
-		pSidekickNet = m_SidekickNet.GetPointer();
 	}
+	pSidekickNet = m_SidekickNet.GetPointer();
 #endif
 
 	latchSetClearImm( LATCH_LED0, LATCH_LED1to3 );
