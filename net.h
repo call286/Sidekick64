@@ -46,6 +46,7 @@
 #endif
 
 #include <circle/net/netsubsystem.h>
+#include <circle/net/dnsclient.h>
 
 #ifndef _sidekicknet_h
 #define _sidekicknet_h
@@ -63,7 +64,7 @@ public:
 	boolean Initialize ( void );
 	boolean IsRunning ( void );
 	boolean CheckForSidekickKernelUpdate ( CString );
-	boolean GetFileViaHTTP (const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
+	boolean GetFileViaHTTP (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void contactDevServer();
 	CString getTimeString();
@@ -71,6 +72,9 @@ public:
 	CString getRaspiModelName();
 	
 private:
+	
+	CIPAddress resolveIP( const char * );
+	
 	CUSBHCIDevice     m_USBHCI;
 	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
 	CScheduler        * m_pScheduler;
@@ -80,6 +84,8 @@ private:
 	CBcm4343Device    m_WLAN;
 #endif
 	CNetSubSystem     m_Net;
+	CDNSClient        m_DNSClient;
+	CIPAddress        m_DevHttpServerIP;
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
 	FATFS m_FileSystem;

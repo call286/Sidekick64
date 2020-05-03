@@ -35,7 +35,6 @@
 #include "helpers.h"
 
 #include <circle/net/ntpclient.h>
-#include <circle/net/dnsclient.h>
 #include <circle/net/httpclient.h>
 // Network configuration
 #ifndef WITH_WLAN
@@ -68,6 +67,7 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_Net (0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeWLAN),
 		m_WPASupplicant (CONFIG_FILE),
 #endif
+		m_DNSClient(&m_Net),
 		m_isActive( false ),
 		m_FileLength( 0 ),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () )
@@ -186,15 +186,31 @@ boolean CSidekickNet::Initialize()
 
 	//net connection is up and running now
 	m_isActive = true;
+	
+	if ( m_DevHttpHost != 0)
+	{
+		m_DevHttpServerIP = resolveIP(m_DevHttpHost);
+	}
 	return true;
 }
+
+CIPAddress CSidekickNet::resolveIP( const char * host )
+{
+	assert (m_isActive);
+	CIPAddress ip;
+	if (!m_DNSClient.Resolve (host, &ip))
+	{
+		logger->Write ("CSidekickNet::resolveIP", LogWarning, "Cannot resolve: %s",host);
+	}
+	return ip;
+}
+
 
 boolean CSidekickNet::UpdateTime(void)
 {
 	assert (m_isActive);
 	CIPAddress NTPServerIP;
-	CDNSClient DNSClient (&m_Net);
-	if (!DNSClient.Resolve (NTPServer, &NTPServerIP))
+	if (!m_DNSClient.Resolve (NTPServer, &NTPServerIP))
 	{
 		logger->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot resolve: %s",
 					(const char *) NTPServer);
@@ -245,7 +261,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
 	logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogNotice, 
 		"Now fetching kernel file from http://%s%s.", m_DevHttpHost, (const char *) sKernelFilePath
 	);
-	if ( GetFileViaHTTP ( m_DevHttpHost, (const char *) sKernelFilePath, m_pFileBuffer, m_FileLength))
+	if ( GetFileViaHTTP ( m_DevHttpServerIP, m_DevHttpHost, (const char *) sKernelFilePath, m_pFileBuffer, m_FileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", m_FileLength
@@ -275,32 +291,23 @@ void CSidekickNet::contactDevServer(){
 	}
 	//logger->Write( "contactDevServer", LogNotice, "Now fetching 404 file from NET_DEV_SERVER.");
 	const char * file404 = "not_there.html";
-	boolean bTmp = GetFileViaHTTP ( m_DevHttpHost, file404, m_pFileBuffer, m_FileLength);
+	boolean bTmp = GetFileViaHTTP ( m_DevHttpServerIP, m_DevHttpHost, file404, m_pFileBuffer, m_FileLength);
 	m_pFileBuffer = new char[1];
 	m_pFileBuffer = 0;	
 }
 
-boolean CSidekickNet::GetFileViaHTTP (const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead)
+boolean CSidekickNet::GetFileViaHTTP ( CIPAddress ip, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead)
 {
 	//This method is derived from the webclient example of circle.
 	assert (m_isActive);
-	CIPAddress ForeignIP;
-	CDNSClient DNSClient (&m_Net);
-	if (!DNSClient.Resolve (pHost, &ForeignIP))
-	{
-		logger->Write( "GetFileViaHTTP", LogError, "Cannot resolve: %s", pHost);
-
-		return false;
-	}
-
 	CString IPString;
-	ForeignIP.Format (&IPString);
+	ip.Format (&IPString);
 	logger->Write( "GetFileViaHTTP", LogDebug, "Outgoing connection to %s", (const char *) IPString);
 
 	unsigned nLength = nDocMaxSize;
 
 	assert (pBuffer != 0);
-	CHTTPClient Client (&m_Net, ForeignIP, HTTP_PORT, pHost);
+	CHTTPClient Client (&m_Net, ip, HTTP_PORT, pHost);
 	THTTPStatus Status = Client.Get (pFile, (u8 *) pBuffer, &nLength);
 	if (Status != HTTPOK)
 	{
