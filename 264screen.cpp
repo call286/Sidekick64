@@ -1065,11 +1065,11 @@ void renderC64()
 			if ( previousMenuScreen == MENU_BROWSER )
 				convert = 3;
 
-			printC64( 0, 10, "����������������������������������������", skinValues.SKIN_ERROR_BAR, 0, 1 );
+			printC64( 0, 10, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_ERROR_BAR, 0, 1 );
 			printC64( 0, 11, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
 			printC64( 0, 12, errorMsg, skinValues.SKIN_ERROR_TEXT, 0, convert );
 			printC64( 0, 13, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
-			printC64( 0, 14, "����������������������������������������", skinValues.SKIN_ERROR_BAR, 0, 1 );
+			printC64( 0, 14, "\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8", skinValues.SKIN_ERROR_BAR, 0, 1 );
 		}
 	}
 }
