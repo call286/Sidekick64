@@ -37,6 +37,14 @@
 #include <circle/machineinfo.h>
 #include <circle/sched/scheduler.h>
 #include <circle/usb/usbhcidevice.h>
+#include <SDCard/emmc.h>
+
+#ifdef WITH_WLAN
+#include <fatfs/ff.h>
+#include <wlan/bcm4343.h>
+#include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
+#endif
+
 #include <circle/net/netsubsystem.h>
 
 #ifndef _sidekicknet_h
@@ -47,7 +55,7 @@ extern CLogger *logger;
 class CSidekickNet
 {
 public:
-	CSidekickNet( CInterruptSystem *, CTimer *, CScheduler * );
+	CSidekickNet( CInterruptSystem *, CTimer *, CScheduler *, CEMMCDevice * );
 	~CSidekickNet( void )
 	{
 	};
@@ -64,11 +72,18 @@ public:
 private:
 	CUSBHCIDevice     m_USBHCI;
 	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
-	CScheduler			  * m_pScheduler;
-	CTimer				    * m_pTimer;
-	CNetSubSystem       m_Net;
+	CScheduler        * m_pScheduler;
+	CTimer            * m_pTimer;
+#ifdef WITH_WLAN
+	CEMMCDevice		    m_EMMC;
+	CBcm4343Device    m_WLAN;
+#endif
+	CNetSubSystem     m_Net;
+#ifdef WITH_WLAN
+	CWPASupplicant    m_WPASupplicant;	
+	FATFS m_FileSystem;
+#endif
 	boolean m_isActive;
-	boolean m_storeFile;
 	unsigned m_FileLength;
 	char * m_pFileBuffer;
 	const char * m_DevHttpHost;

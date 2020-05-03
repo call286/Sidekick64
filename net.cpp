@@ -38,7 +38,9 @@
 #include <circle/net/dnsclient.h>
 #include <circle/net/httpclient.h>
 // Network configuration
+#ifndef WITH_WLAN
 #define USE_DHCP
+#endif
 // Time configuration
 static const char NTPServer[]    = "pool.ntp.org";
 static const int nTimeZone       = 2*60;		// minutes diff to UTC
@@ -50,10 +52,22 @@ static const char DRIVE[] = "SD:";
 static const unsigned nDocMaxSize = 800*1024;
 static const char FILENAME_HTTPDUMP[] = "SD:kernel8.img";
 
-CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer, CScheduler * pScheduler  )
-		:m_USBHCI ( pInterruptSystem, pTimer),
-		m_pScheduler( pScheduler ),
-		m_pTimer ( pTimer ),
+#ifdef WITH_WLAN
+#define DRIVE		"SD:"
+#define FIRMWARE_PATH	DRIVE "/firmware/"		// firmware files must be provided here
+#define CONFIG_FILE	DRIVE "/wpa_supplicant.conf"
+#endif
+
+CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer, CScheduler * pScheduler, CEMMCDevice * pEmmcDevice  )
+		:m_USBHCI (pInterruptSystem, pTimer),
+		m_pScheduler(pScheduler),
+		m_pTimer (pTimer),
+#ifdef WITH_WLAN		
+		m_EMMC ( *pEmmcDevice),
+		m_WLAN (FIRMWARE_PATH),
+		m_Net (0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeWLAN),
+		m_WPASupplicant (CONFIG_FILE),
+#endif
 		m_isActive( false ),
 		m_FileLength( 0 )
 {
@@ -82,6 +96,7 @@ boolean CSidekickNet::Initialize()
 		);
 		return true;
 	}
+	
 	if (!m_USBHCI.Initialize ())
 	{
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
@@ -89,7 +104,23 @@ boolean CSidekickNet::Initialize()
 		);
 		return false;
 	}
-	
+#ifdef WITH_WLAN
+	if (f_mount (&m_FileSystem, DRIVE, 1) != FR_OK)
+	{
+		logger->Write ("CSidekickNet::Initialize", LogError,
+				"Cannot mount drive: %s", DRIVE);
+
+		return false;
+	}
+		
+	if (!m_WLAN.Initialize ())
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Couldn't initialize instance of WLAN."
+		);
+		return false;
+	}
+#endif
 	if (!m_Net.Initialize (false))
 	{
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
@@ -97,9 +128,21 @@ boolean CSidekickNet::Initialize()
 		);
 		return false;
 	}
-	
+#ifdef WITH_WLAN
+	if (!m_WPASupplicant.Initialize ())
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Couldn't initialize instance of CWPASupplicant."
+		);
+		return false;
+	}	
+#endif
 	unsigned sleepCount = 0;
+#ifdef WITH_WLAN
+	static const unsigned sleepLimit = 1000;
+#else
 	static const unsigned sleepLimit = 100;
+#endif
 	while (!m_Net.IsRunning () && sleepCount < sleepLimit)
 	{
 		m_pScheduler->MsSleep (100);
@@ -178,8 +221,8 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
 	logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogNotice, 
 		"Now fetching kernel file from http://%s%s.", m_DevHttpHost, (const char *) sKernelFilePath
 	);
-	m_storeFile = GetFileViaHTTP ( m_DevHttpHost, (const char *) sKernelFilePath, m_pFileBuffer, m_FileLength);
-	if ( m_storeFile ){
+	if ( GetFileViaHTTP ( m_DevHttpHost, (const char *) sKernelFilePath, m_pFileBuffer, m_FileLength))
+	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", m_FileLength
 		);
@@ -188,8 +231,6 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
 	}
 	m_pFileBuffer = new char[1];//make it very small
 	m_pFileBuffer = 0;	
-	m_pScheduler->Sleep (2); // TODO: this is ugly
-	m_storeFile = false;
 	m_FileLength = 0;
 	return true;
 }
