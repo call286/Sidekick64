@@ -50,6 +50,9 @@ static const char DRIVE[] = "SD:";
 //nDocMaxSize reserved 800 KB as the maximum size of the kernel file
 static const unsigned nDocMaxSize = 900*1024;
 static const char FILENAME_HTTPDUMP[] = "SD:kernel8.img";
+static const char msgNoConnection[] = "Sorry, no network connection!";
+static const char msgNotFound[]     = "Message not found. :(";
+static const char filepath[]        = "/not_there.php";
 
 #ifdef WITH_WLAN
 #define DRIVE		"SD:"
@@ -69,19 +72,14 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 #endif
 		m_DNSClient(&m_Net),
 		m_isActive( false ),
-		m_FileLength( 0 ),
-		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () )
+		m_devServerMessage( (char *) "" ),
+		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
+		m_DevHttpHost(0),
+		m_PlaygroundHttpHost(0)
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
 	assert (& m_USBHCI != 0);
-
-	if ( m_PiModel != MachineModel3APlus && m_PiModel != MachineModel3BPlus)
-	{
-		logger->Write( "CSidekickNet::Initialize", LogWarning, 
-			"Warning: The model of Raspberry Pi you are using is not a model supported by Sidekick64/264!"
-		);
-	}
 
 	#ifdef NET_DEV_SERVER
 	  m_DevHttpHost = (const char *) NET_DEV_SERVER;
@@ -91,17 +89,26 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_SidekickKernelLocation = 0;
 	#endif
 	
+	#ifdef NET_PUBLIC_PLAY_SERVER
+	  m_PlaygroundHttpHost = (const char *) NET_PUBLIC_PLAY_SERVER;
+	#else
+	  m_PlaygroundHttpHost = 0;
+	#endif
+
+
 	//timezone is not really related to net stuff, it could go somewhere else
 	m_pTimer->SetTimeZone (nTimeZone);
 }
 
-boolean CSidekickNet::IsRunning ()
-{
-	 return m_isActive; 
-};
-
 boolean CSidekickNet::Initialize()
 {
+	if ( m_PiModel != MachineModel3APlus && m_PiModel != MachineModel3BPlus)
+	{
+		logger->Write( "CSidekickNet::Initialize", LogWarning, 
+			"Warning: The model of Raspberry Pi you are using is not a model supported by Sidekick64/264!"
+		);
+	}
+	
 	if (m_isActive)
 	{
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
@@ -188,23 +195,55 @@ boolean CSidekickNet::Initialize()
 	m_isActive = true;
 	
 	if ( m_DevHttpHost != 0)
-	{
-		m_DevHttpServerIP = resolveIP(m_DevHttpHost);
-	}
+		m_DevHttpServerIP = getIPForHost(m_DevHttpHost);
+	if ( m_PlaygroundHttpHost != 0)
+		m_PlaygroundHttpServerIP = getIPForHost( m_PlaygroundHttpHost);
 	return true;
 }
 
-CIPAddress CSidekickNet::resolveIP( const char * host )
+boolean CSidekickNet::IsRunning ()
+{
+	 return m_isActive; 
+};
+
+CString CSidekickNet::getTimeString()
+{
+	//the most complicated and ugly way to get the data into the right form...
+	CString *pTimeString = m_pTimer->GetTimeString();
+	CString Buffer;
+	if (pTimeString != 0)
+	{
+		Buffer.Append (*pTimeString);
+	}
+	delete pTimeString;
+	//logger->Write( "getTimeString", LogDebug, "%s ", Buffer);
+	return Buffer;
+}
+
+CString CSidekickNet::getRaspiModelName()
+{
+	return m_pMachineInfo->Get()->GetMachineName ();
+}
+
+CNetConfig * CSidekickNet::GetNetConfig(){
+	assert (m_isActive);
+	return m_Net.GetConfig ();
+}
+
+char * CSidekickNet::getLatestDevServerMessage(){
+	return m_devServerMessage;
+}
+
+CIPAddress CSidekickNet::getIPForHost( const char * host )
 {
 	assert (m_isActive);
 	CIPAddress ip;
 	if (!m_DNSClient.Resolve (host, &ip))
 	{
-		logger->Write ("CSidekickNet::resolveIP", LogWarning, "Cannot resolve: %s",host);
+		logger->Write ("CSidekickNet::getIPForHost", LogWarning, "Cannot resolve: %s",host);
 	}
 	return ip;
 }
-
 
 boolean CSidekickNet::UpdateTime(void)
 {
@@ -217,7 +256,6 @@ boolean CSidekickNet::UpdateTime(void)
 
 		return false;
 	}
-	
 	CNTPClient NTPClient (&m_Net);
 	unsigned nTime = NTPClient.GetTime (NTPServerIP);
 	if (nTime == 0)
@@ -240,8 +278,8 @@ boolean CSidekickNet::UpdateTime(void)
 }
 
 //looks for the presence of a file on a pre-defined HTTP Server
-//file is being read and sotred on the sd card
-boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
+//file is being read and stored on the sd card
+boolean CSidekickNet::CheckForSidekickKernelUpdate( const char * sKernelFilePath)
 {
 	if ( m_DevHttpHost == 0 )
 	{
@@ -251,95 +289,71 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate( CString sKernelFilePath)
 		return FALSE;
 	}
 	assert (m_isActive);
-		
-	m_FileLength = 0;
-	m_pFileBuffer = new char[nDocMaxSize+1];	// +1 for 0-termination
-	if (m_pFileBuffer == 0)
+	unsigned iFileLength = 0;
+	char * pFileBuffer = new char[nDocMaxSize+1];	// +1 for 0-termination
+	if (pFileBuffer == 0)
 	{
-		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogPanic, "Cannot allocate document buffer");
+		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogError, "Cannot allocate document buffer");
+		return false;
 	}
-	logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogNotice, 
-		"Now fetching kernel file from http://%s%s.", m_DevHttpHost, (const char *) sKernelFilePath
-	);
-	if ( GetFileViaHTTP ( m_DevHttpServerIP, m_DevHttpHost, (const char *) sKernelFilePath, m_pFileBuffer, m_FileLength))
+	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, sKernelFilePath, pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
-			"Now trying to write kernel file to SD card, bytes to write: %i", m_FileLength
+			"Now trying to write kernel file to SD card, bytes to write: %i", iFileLength
 		);
-		writeFile( logger, DRIVE, FILENAME_HTTPDUMP, (u8*) m_pFileBuffer, m_FileLength );
+		writeFile( logger, DRIVE, FILENAME_HTTPDUMP, (u8*) pFileBuffer, iFileLength );
 		logger->Write( "SidekickKernelUpdater", LogNotice, "Finished writing kernel to SD card");
 	}
-	m_pFileBuffer = new char[1];//make it very small
-	m_pFileBuffer = 0;	
-	m_FileLength = 0;
 	return true;
 }
 
-CNetConfig * CSidekickNet::GetNetConfig(){
-	assert (m_isActive);
-	return m_Net.GetConfig ();
-}
-
-//temporary test method to do a HTTP request just to get a "small" 404 reply
-void CSidekickNet::contactDevServer(){
-	assert (m_isActive);
-	m_FileLength = 0;
-	m_pFileBuffer = new char[100];	// +1 for 0-termination
-	if (m_pFileBuffer == 0)
+void CSidekickNet::updateNetworkMessageOfTheDay(){
+	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{
-		logger->Write( "contactDevServer", LogPanic, "Cannot allocate document buffer");
+		m_devServerMessage = (char *) msgNoConnection;
+		return;
 	}
-	//logger->Write( "contactDevServer", LogNotice, "Now fetching 404 file from NET_DEV_SERVER.");
-	const char * file404 = "not_there.html";
-	boolean bTmp = GetFileViaHTTP ( m_DevHttpServerIP, m_DevHttpHost, file404, m_pFileBuffer, m_FileLength);
-	m_pFileBuffer = new char[1];
-	m_pFileBuffer = 0;	
+	unsigned iFileLength = 0;
+	char * pResponseBuffer = new char[301];	// +1 for 0-termination
+	if (pResponseBuffer == 0)
+	{
+		logger->Write( "updateNetworkMessageOfTheDay", LogError, "Cannot allocate document buffer");
+		return;
+	}
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, filepath, pResponseBuffer, iFileLength))
+	{
+		if ( iFileLength > 0 )
+			pResponseBuffer[iFileLength-1] = '\0';
+		m_devServerMessage = pResponseBuffer;
+		//logger->Write( "updateNetworkMessageOfTheDay", LogNotice, "HTTP Document content: '%s'", pResponseBuffer);
+	}
+	else
+	{
+		m_devServerMessage = (char *) msgNotFound;
+	}
 }
 
-boolean CSidekickNet::GetFileViaHTTP ( CIPAddress ip, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead)
+boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead)
 {
 	//This method is derived from the webclient example of circle.
 	assert (m_isActive);
+	assert (pBuffer != 0);
 	CString IPString;
 	ip.Format (&IPString);
-	logger->Write( "GetFileViaHTTP", LogDebug, "Outgoing connection to %s", (const char *) IPString);
-
+	logger->Write( "GetHTTPResponseBody", LogNotice, 
+		"HTTP GET to http://%s%s (%s)", pHost, pFile, (const char *) IPString);
 	unsigned nLength = nDocMaxSize;
-
-	assert (pBuffer != 0);
 	CHTTPClient Client (&m_Net, ip, HTTP_PORT, pHost);
 	THTTPStatus Status = Client.Get (pFile, (u8 *) pBuffer, &nLength);
 	if (Status != HTTPOK)
 	{
-		logger->Write( "GetFileViaHTTP", LogError, "HTTP request failed (status %u)", Status);
+		logger->Write( "GetHTTPResponseBody", LogError, "HTTP request failed (status %u)", Status);
 
 		return false;
 	}
-
-	logger->Write( "GetFileViaHTTP", LogDebug, "%u bytes successfully received", nLength);
-
+	//logger->Write( "GetHTTPResponseBody", LogDebug, "%u bytes successfully received", nLength);
 	assert (nLength <= nDocMaxSize);
 	pBuffer[nLength] = '\0';
 	nLengthRead = nLength;
-
-	return TRUE;
-}
-
-CString CSidekickNet::getTimeString()
-{
-	//the most complicated and ugly way to get the data into the right form...
-	CString *pTimeString = m_pTimer->GetTimeString();
-	CString Buffer;
-	if (pTimeString != 0)
-	{
-		Buffer.Append (*pTimeString);
-	}
-	delete pTimeString;
-	//logger->Write( "getTimeString", LogDebug, "%s ", Buffer);
-	return Buffer;
-}
-
-CString CSidekickNet::getRaspiModelName()
-{
-	return m_pMachineInfo->Get()->GetMachineName ();
+	return true;
 }

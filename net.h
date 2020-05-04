@@ -63,17 +63,18 @@ public:
 	CSidekickNet * GetPointer(){ return this; };
 	boolean Initialize ( void );
 	boolean IsRunning ( void );
-	boolean CheckForSidekickKernelUpdate ( CString );
-	boolean GetFileViaHTTP (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
+	boolean CheckForSidekickKernelUpdate ( const char * );
+	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
-	void contactDevServer();
+	void updateNetworkMessageOfTheDay();
+	char * getLatestDevServerMessage();
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
 	CString getRaspiModelName();
-	
+
 private:
 	
-	CIPAddress resolveIP( const char * );
+	CIPAddress getIPForHost( const char * );
 	
 	CUSBHCIDevice     m_USBHCI;
 	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
@@ -86,16 +87,18 @@ private:
 	CNetSubSystem     m_Net;
 	CDNSClient        m_DNSClient;
 	CIPAddress        m_DevHttpServerIP;
+	CIPAddress        m_PlaygroundHttpServerIP;
+	
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
 	FATFS m_FileSystem;
 #endif
 	boolean m_isActive;
-	unsigned m_FileLength;
-	char * m_pFileBuffer;
+	char * m_devServerMessage;
+  TMachineModel m_PiModel;
 	const char * m_DevHttpHost;
+	const char * m_PlaygroundHttpHost;
 	const char * m_SidekickKernelLocation;
-	TMachineModel m_PiModel;
 };
 
 #endif
