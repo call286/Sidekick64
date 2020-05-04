@@ -72,10 +72,12 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 #endif
 		m_DNSClient(&m_Net),
 		m_isActive( false ),
+		m_isKernelUpdateQueued( false ),
 		m_devServerMessage( (char *) "" ),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
-		m_PlaygroundHttpHost(0)
+		m_PlaygroundHttpHost(0),
+		m_SidekickKernelUpdatePath(0)
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
@@ -206,6 +208,15 @@ boolean CSidekickNet::IsRunning ()
 	 return m_isActive; 
 };
 
+void CSidekickNet::handleQueuedKernelUpdate()
+{
+	 if (m_isKernelUpdateQueued && m_isActive)
+	 {
+		 CheckForSidekickKernelUpdate();
+		 m_isKernelUpdateQueued = false;
+	 }
+};
+
 CString CSidekickNet::getTimeString()
 {
 	//the most complicated and ugly way to get the data into the right form...
@@ -279,14 +290,21 @@ boolean CSidekickNet::UpdateTime(void)
 
 //looks for the presence of a file on a pre-defined HTTP Server
 //file is being read and stored on the sd card
-boolean CSidekickNet::CheckForSidekickKernelUpdate( const char * sKernelFilePath)
+boolean CSidekickNet::CheckForSidekickKernelUpdate()
 {
 	if ( m_DevHttpHost == 0 )
 	{
-		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogNotice, 
+		logger->Write( "CSidekickNet::CheckForSidekickKernelUpdate", LogNotice, 
 			"Skipping check: NET_DEV_SERVER is not defined."
 		);
-		return FALSE;
+		return false;
+	}
+	if ( m_SidekickKernelUpdatePath == 0 )
+	{
+		logger->Write( "CSidekickNet::CheckForSidekickKernelUpdate", LogNotice, 
+			"Skipping check: HTTP update path is not defined."
+		);
+		return false;
 	}
 	assert (m_isActive);
 	unsigned iFileLength = 0;
@@ -296,7 +314,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate( const char * sKernelFilePath
 		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogError, "Cannot allocate document buffer");
 		return false;
 	}
-	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, sKernelFilePath, pFileBuffer, iFileLength))
+	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, m_SidekickKernelUpdatePath, pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", iFileLength

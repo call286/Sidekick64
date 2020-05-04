@@ -374,7 +374,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 		}
 
 #ifdef WITH_NET
-		//entering the network menu via F6
+		//entering the network menu from the main menu via F6
 		if ( k == 139 /* F6 */ )
 		{
 			menuScreen = MENU_NETWORK;
@@ -695,15 +695,15 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			return;
 		}
-/*
-TODO: add real functionality here
+		/*
 		if ( k == 'z' || k == 'Z')
 		{
-			menuScreen = MENU_MAIN;
+			menuScreen = MENU_NETWORK;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			pSidekickNet->queueKernelUpdate();
 			return;
 		}
-*/		
+		*/
 	} else
 #endif		
 	if ( menuScreen == MENU_CONFIG )

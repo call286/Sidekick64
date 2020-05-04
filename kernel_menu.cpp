@@ -178,7 +178,9 @@ boolean CKernelMenu::Initialize( void )
 #ifdef WITH_NET
 	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 	if (bNetOK){
-		m_SidekickNet.CheckForSidekickKernelUpdate( (const char *) "/sidekick64/kernel8.img" );
+		static const char kernelUpdatePath[] = "/sidekick64/kernel8.img";
+		m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
+		m_SidekickNet.CheckForSidekickKernelUpdate();
 	  m_SidekickNet.UpdateTime();
 	}
 	pSidekickNet = m_SidekickNet.GetPointer();
@@ -364,9 +366,10 @@ void CKernelMenu::Run( void )
 				m_InputPin.DisableInterrupt();
 				m_InputPin.DisconnectInterrupt();
 				EnableIRQs();
-				size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
+				//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
 				//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
 				m_SidekickNet.updateNetworkMessageOfTheDay();
+				m_SidekickNet.handleQueuedKernelUpdate();
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
 				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );

@@ -63,10 +63,14 @@ public:
 	CSidekickNet * GetPointer(){ return this; };
 	boolean Initialize ( void );
 	boolean IsRunning ( void );
-	boolean CheckForSidekickKernelUpdate ( const char * );
+	boolean CheckForSidekickKernelUpdate ();
 	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void updateNetworkMessageOfTheDay();
+	void queueKernelUpdate(){ m_isKernelUpdateQueued = true; };
+	void handleQueuedKernelUpdate();
+	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
+
 	char * getLatestDevServerMessage();
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
@@ -94,11 +98,13 @@ private:
 	FATFS m_FileSystem;
 #endif
 	boolean m_isActive;
+	boolean m_isKernelUpdateQueued;
 	char * m_devServerMessage;
   TMachineModel m_PiModel;
 	const char * m_DevHttpHost;
 	const char * m_PlaygroundHttpHost;
 	const char * m_SidekickKernelLocation;
+	const char * m_SidekickKernelUpdatePath;
 };
 
 #endif
