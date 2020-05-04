@@ -961,7 +961,7 @@ void printNetworkScreen()
 	CString strDefGateway = "Default Gateway: "; 
 	CString strDNSServer  = "DNS Server:      ";
 	CString strDhcpUsed   = "DHCP active:     ";
-	CString strKernelCV   = "Circle version:  ";
+	CString strKernelCV   = "Circle ";
 	CString strKernelTS   = "Compiled on:     ";
 	CString strKernelTS2  = "                 ";
 	CString strHelper;
@@ -990,6 +990,10 @@ void printNetworkScreen()
 	strKernelTS.Append( __DATE__ );
 	strKernelTS2.Append( __TIME__ );
 
+	printC64( x+1, y1+2, "Network message of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( x+1, y1+3, pSidekickNet->getLatestDevServerMessage(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+
+	y1 = 5;
 	printC64( x+1, y1+2, "Network settings", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+3, strIpAdress,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
@@ -999,19 +1003,20 @@ void printNetworkScreen()
 	printC64( x+1, y1+ 8, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	#ifdef NET_DEV_SERVER
 		printC64( x+1, y1+9, "Update via HTTP: On (during boot)", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-		y1 = 3;
+		y1 = 6;
 	#endif
 	printC64( x+1, y1+ 9, strKernelTS, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+10, strKernelTS2, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	printC64( x+1, y1+11, strKernelCV, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
-	y1=2;
+	y1=3;
 	
 	printC64( x+1, y1+15, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+16, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
 	printC64( x+1, y1+18, "System time", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+19, strTimeDate, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+
+	printC64( x+28, 24, strKernelCV, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 	
 	printSidekickLogo();
 
