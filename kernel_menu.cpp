@@ -176,13 +176,17 @@ boolean CKernelMenu::Initialize( void )
 #endif
 
 #ifdef WITH_NET
+	//TODO: this should be done in constructor of SideKickNet
+	static const char kernelUpdatePath[] = "/sidekick64/kernel8.img";
+	m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
+	/*
+	This is now triggered from Network screen by the user
 	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 	if (bNetOK){
-		static const char kernelUpdatePath[] = "/sidekick64/kernel8.img";
-		m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
 		m_SidekickNet.CheckForSidekickKernelUpdate();
 	  m_SidekickNet.UpdateTime();
 	}
+	*/
 	pSidekickNet = m_SidekickNet.GetPointer();
 #endif
 
@@ -362,14 +366,15 @@ void CKernelMenu::Run( void )
 			doneWithHandling = 1;
 			updateMenu = 0;
 			//to test this, please modify the ifdef and the code inside
-			#ifdef WITH_NET_EXPERIMENTAL
+			#ifdef WITH_NET
 				m_InputPin.DisableInterrupt();
 				m_InputPin.DisconnectInterrupt();
 				EnableIRQs();
 				//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
 				//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
-				m_SidekickNet.updateNetworkMessageOfTheDay();
-				m_SidekickNet.handleQueuedKernelUpdate();
+				m_SidekickNet.handleQueuedNetworkAction();
+				handleC64( lastChar, &launchKernel, FILENAME, filenameKernal );
+				renderC64();
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
 				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );

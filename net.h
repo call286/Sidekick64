@@ -67,9 +67,12 @@ public:
 	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void updateNetworkMessageOfTheDay();
+	void queueNetworkInit(){ m_isNetworkInitQueued = true; };
 	void queueKernelUpdate(){ m_isKernelUpdateQueued = true; };
-	void handleQueuedKernelUpdate();
+	void queueNetworkMessageOfTheDay(){ m_isNMOTDQueued = true; };
+	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
+	boolean isDevServerPresent(){ return m_DevHttpHost != 0;};
 
 	char * getLatestDevServerMessage();
 	CString getTimeString();
@@ -98,7 +101,9 @@ private:
 	FATFS m_FileSystem;
 #endif
 	boolean m_isActive;
+	boolean m_isNetworkInitQueued;
 	boolean m_isKernelUpdateQueued;
+	boolean m_isNMOTDQueued;
 	char * m_devServerMessage;
   TMachineModel m_PiModel;
 	const char * m_DevHttpHost;

@@ -72,7 +72,9 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 #endif
 		m_DNSClient(&m_Net),
 		m_isActive( false ),
+		m_isNetworkInitQueued( false ),
 		m_isKernelUpdateQueued( false ),
+		m_isNMOTDQueued( false ),
 		m_devServerMessage( (char *) "" ),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
@@ -208,13 +210,27 @@ boolean CSidekickNet::IsRunning ()
 	 return m_isActive; 
 };
 
-void CSidekickNet::handleQueuedKernelUpdate()
+void CSidekickNet::handleQueuedNetworkAction()
 {
-	 if (m_isKernelUpdateQueued && m_isActive)
-	 {
-		 CheckForSidekickKernelUpdate();
+	if ( m_isNetworkInitQueued )
+	{
+		assert (!m_isActive);
+		Initialize();
+		m_isNetworkInitQueued = false;
+		unsigned tries = 0;
+		while (!UpdateTime() && tries < 3){ tries++;};
+		return;
+	}
+	else if (m_isKernelUpdateQueued && m_isActive)
+	{
+	 	CheckForSidekickKernelUpdate();
 		 m_isKernelUpdateQueued = false;
-	 }
+ 	}
+	else if (m_isNMOTDQueued && m_isActive)
+	{
+		updateNetworkMessageOfTheDay();
+		m_isNMOTDQueued = false;
+	}
 };
 
 CString CSidekickNet::getTimeString()
@@ -280,6 +296,7 @@ boolean CSidekickNet::UpdateTime(void)
 	if (CTimer::Get ()->SetTime (nTime, FALSE))
 	{
 		logger->Write ("CSidekickNet::UpdateTime", LogNotice, "System time updated");
+		return true;
 	}
 	else
 	{

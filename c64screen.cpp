@@ -695,15 +695,27 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			return;
 		}
-		/*
-		if ( k == 'z' || k == 'Z')
+		if ( k == 'c' || k == 'C')
+		{
+			menuScreen = MENU_NETWORK;
+			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			pSidekickNet->queueNetworkInit();
+			return;
+		}
+		if ( k == 'u' || k == 'U')
 		{
 			menuScreen = MENU_NETWORK;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			pSidekickNet->queueKernelUpdate();
 			return;
 		}
-		*/
+		if ( k == 'm' || k == 'M')
+		{
+			menuScreen = MENU_NETWORK;
+			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			pSidekickNet->queueNetworkMessageOfTheDay();
+			return;
+		}
 	} else
 #endif		
 	if ( menuScreen == MENU_CONFIG )
@@ -948,7 +960,11 @@ void printNetworkScreen()
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	//printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	if ( pSidekickNet->isDevServerPresent())
+		printC64( 0, 23, "   C Connect,U Update,M NMOTD,F6 Back   ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	else
+  	printC64( 0, 23, "      C Connect, M NMOTD, F6 Back       ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 
 	const u32 x = 1;
 	u32 y1 = 2;
@@ -1001,10 +1017,11 @@ void printNetworkScreen()
 	printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 
 	printC64( x+1, y1+ 8, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	#ifdef NET_DEV_SERVER
+	if ( pSidekickNet->isDevServerPresent())
+	{
 		printC64( x+1, y1+9, "Update via HTTP: On (during boot)", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		y1 = 6;
-	#endif
+	}
 	printC64( x+1, y1+ 9, strKernelTS, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+10, strKernelTS2, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
