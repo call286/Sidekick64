@@ -177,9 +177,12 @@ boolean CKernelMenu::Initialize( void )
 #endif
 
 #ifdef WITH_NET
+	static const char kernelUpdatePath[] = "/sidekick264/kernel8.img";
+	m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
 	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 	if (bNetOK){
-		m_SidekickNet.CheckForSidekickKernelUpdate("/sidekick264/kernel8.img");
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.CheckForSidekickKernelUpdate();
 	  m_SidekickNet.UpdateTime();
 		pSidekickNet = m_SidekickNet.GetPointer();
 	}

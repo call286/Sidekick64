@@ -212,13 +212,15 @@ boolean CSidekickNet::IsRunning ()
 
 void CSidekickNet::handleQueuedNetworkAction()
 {
-	if ( m_isNetworkInitQueued )
+	if ( m_isNetworkInitQueued && !m_isActive )
 	{
 		assert (!m_isActive);
-		Initialize();
+		if (Initialize())
+		{
+			unsigned tries = 0;
+			while (!UpdateTime() && tries < 3){ tries++;};
+		}
 		m_isNetworkInitQueued = false;
-		unsigned tries = 0;
-		while (!UpdateTime() && tries < 3){ tries++;};
 		return;
 	}
 	else if (m_isKernelUpdateQueued && m_isActive)
