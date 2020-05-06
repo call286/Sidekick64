@@ -960,15 +960,10 @@ void printNetworkScreen()
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	//printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	if ( pSidekickNet->isDevServerConfigured())
-		printC64( 0, 23, "   C Connect,U Update,M NMOTD,F6 Back   ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	else
-  	printC64( 0, 23, "      C Connect, M NMOTD, F6 Back       ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 
 	const u32 x = 1;
-	u32 y1 = 2;
-
+	
 	CString strTimeDate = "";
 	strTimeDate.Append( pSidekickNet->getTimeString());
 	
@@ -977,9 +972,6 @@ void printNetworkScreen()
 	CString strDefGateway = "Default Gateway: "; 
 	CString strDNSServer  = "DNS Server:      ";
 	CString strDhcpUsed   = "DHCP active:     ";
-	CString strKernelCV   = "Circle ";
-	CString strKernelTS   = "Compiled on:     ";
-	CString strKernelTS2  = "                 ";
 	CString strHelper;
 	if ( pSidekickNet->IsRunning() )
 	{
@@ -1002,36 +994,53 @@ void printNetworkScreen()
 		strDhcpUsed.Append( "-" );
 	}
 
-	strKernelCV.Append( CIRCLE_VERSION_STRING );
-	strKernelTS.Append( __DATE__ );
-	strKernelTS2.Append( __TIME__ );
+	u32 y1 = 2;
 
+	printC64( x+1, y1+2, "Network settings", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	if ( pSidekickNet->IsRunning() )
 	{
-		printC64( x+1, y1+2, "Network message of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-		printC64( x+1, y1+3, pSidekickNet->getLatestDevServerMessage(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-
-		y1 = 5;
-		printC64( x+1, y1+2, "Network settings", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 		printC64( x+1, y1+3, strIpAdress,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+5, strDefGateway, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
+		
+		printC64( x+1, y1+8, "Network >m<essage of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+		printC64( x+1, y1+9, pSidekickNet->getNetworkMessageOfTheDay(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		
 	}
-	y1 = 5;
+	else{
+		printC64( x+1, y1+4, "Network connection is inactive", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+		if (pSidekickNet->isWireless())
+		{
+			//                   "012345678901234567890123456789012345XXXX"
+			printC64( x+1, y1+5, "Press C to establish a wireless",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+6, "network connection! (Firmware files",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+7, "and a valid configuration file with",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+8, "SSID and passphrase have to be",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+9, "present on the SD card.)",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		}
+		else
+		{
+			//                   "012345678901234567890123456789012345XXXX"
+			printC64( x+1, y1+5, "Please plug in a network cable if",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+6, "not already present. Press >C< to",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+7, "establish a network connection!",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		}
+	}
+
+	CString strKernelCV   = "Circle ";
+	CString strKernelTS   = "Compiled on: ";
+	strKernelCV.Append( CIRCLE_VERSION_STRING );
+	strKernelTS.Append( __DATE__ );
+	strKernelTS.Append( ", " );
+	strKernelTS.Append( __TIME__ );
 	
-	printC64( x+1, y1+ 8, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	/*
-	if ( pSidekickNet->isDevServerConfigured())
+	printC64( x+1, y1+ 11, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( x+1, y1+12, strKernelTS, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	if ( pSidekickNet->IsRunning() && pSidekickNet->isDevServerConfigured())
 	{
-		printC64( x+1, y1+9, "Update via HTTP: On (during boot)", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-		y1 = 6;
+		printC64( x+1, y1+13, "Press >U< for kernel update via HTTP", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	}
-	*/
-	printC64( x+1, y1+ 9, strKernelTS, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	printC64( x+1, y1+10, strKernelTS2, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	
-	y1=3;
 	
 	printC64( x+1, y1+15, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+16, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );

@@ -77,7 +77,7 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isNetworkInitQueued( false ),
 		m_isKernelUpdateQueued( false ),
 		m_isNMOTDQueued( false ),
-		m_devServerMessage( (char *) "" ),
+		m_devServerMessage( (char *) "Press M to see another message here." ),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
 		m_PlaygroundHttpHost(0),
@@ -288,7 +288,7 @@ CNetConfig * CSidekickNet::GetNetConfig(){
 	return m_Net.GetConfig ();
 }
 
-char * CSidekickNet::getLatestDevServerMessage(){
+char * CSidekickNet::getNetworkMessageOfTheDay(){
 	return m_devServerMessage;
 }
 

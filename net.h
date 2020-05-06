@@ -73,8 +73,9 @@ public:
 	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
+	boolean isWireless(){ return m_useWLAN;};
 
-	char * getLatestDevServerMessage();
+	char * getNetworkMessageOfTheDay();
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
 	CString getRaspiModelName();
