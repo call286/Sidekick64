@@ -961,7 +961,7 @@ void printNetworkScreen()
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	//printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	if ( pSidekickNet->isDevServerPresent())
+	if ( pSidekickNet->isDevServerConfigured())
 		printC64( 0, 23, "   C Connect,U Update,M NMOTD,F6 Back   ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	else
   	printC64( 0, 23, "      C Connect, M NMOTD, F6 Back       ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
@@ -1006,22 +1006,28 @@ void printNetworkScreen()
 	strKernelTS.Append( __DATE__ );
 	strKernelTS2.Append( __TIME__ );
 
-	printC64( x+1, y1+2, "Network message of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( x+1, y1+3, pSidekickNet->getLatestDevServerMessage(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	if ( pSidekickNet->IsRunning() )
+	{
+		printC64( x+1, y1+2, "Network message of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+		printC64( x+1, y1+3, pSidekickNet->getLatestDevServerMessage(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 
+		y1 = 5;
+		printC64( x+1, y1+2, "Network settings", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+		printC64( x+1, y1+3, strIpAdress,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
+		printC64( x+1, y1+5, strDefGateway, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
+		printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
+	}
 	y1 = 5;
-	printC64( x+1, y1+2, "Network settings", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( x+1, y1+3, strIpAdress,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
-	printC64( x+1, y1+5, strDefGateway, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
-	printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
-
+	
 	printC64( x+1, y1+ 8, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	if ( pSidekickNet->isDevServerPresent())
+	/*
+	if ( pSidekickNet->isDevServerConfigured())
 	{
 		printC64( x+1, y1+9, "Update via HTTP: On (during boot)", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		y1 = 6;
 	}
+	*/
 	printC64( x+1, y1+ 9, strKernelTS, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+10, strKernelTS2, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	

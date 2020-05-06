@@ -72,7 +72,7 @@ public:
 	void queueNetworkMessageOfTheDay(){ m_isNMOTDQueued = true; };
 	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
-	boolean isDevServerPresent(){ return m_DevHttpHost != 0;};
+	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 
 	char * getLatestDevServerMessage();
 	CString getTimeString();
@@ -81,7 +81,10 @@ public:
 
 private:
 	
+	boolean Prepare ( void );
+	boolean unmountSDDrive();
 	CIPAddress getIPForHost( const char * );
+	
 	
 	CUSBHCIDevice     m_USBHCI;
 	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
@@ -100,7 +103,9 @@ private:
 	CWPASupplicant    m_WPASupplicant;	
 	FATFS m_FileSystem;
 #endif
+	boolean m_useWLAN;
 	boolean m_isActive;
+	boolean m_isPrepared;
 	boolean m_isNetworkInitQueued;
 	boolean m_isKernelUpdateQueued;
 	boolean m_isNMOTDQueued;

@@ -71,7 +71,9 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_WPASupplicant (CONFIG_FILE),
 #endif
 		m_DNSClient(&m_Net),
+		m_useWLAN (false),
 		m_isActive( false ),
+		m_isPrepared( false ),
 		m_isNetworkInitQueued( false ),
 		m_isKernelUpdateQueued( false ),
 		m_isNMOTDQueued( false ),
@@ -99,6 +101,11 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 	  m_PlaygroundHttpHost = 0;
 	#endif
 
+	#ifdef WITH_WLAN
+		m_useWLAN = true;
+	#else
+		m_useWLAN = false;
+	#endif
 
 	//timezone is not really related to net stuff, it could go somewhere else
 	m_pTimer->SetTimeZone (nTimeZone);
@@ -106,12 +113,8 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 
 boolean CSidekickNet::Initialize()
 {
-	if ( m_PiModel != MachineModel3APlus && m_PiModel != MachineModel3BPlus)
-	{
-		logger->Write( "CSidekickNet::Initialize", LogWarning, 
-			"Warning: The model of Raspberry Pi you are using is not a model supported by Sidekick64/264!"
-		);
-	}
+	const unsigned sleepLimit = 100 * (m_useWLAN ? 10:1);
+	unsigned sleepCount = 0;
 	
 	if (m_isActive)
 	{
@@ -120,74 +123,22 @@ boolean CSidekickNet::Initialize()
 		);
 		return true;
 	}
-	
-	if (!m_USBHCI.Initialize ())
+	if ( !m_isPrepared )
 	{
-		logger->Write( "CSidekickNet::Initialize", LogNotice, 
-			"Couldn't initialize instance of CUSBHCIDevice."
-		);
-		return false;
+		if (!Prepare()){
+			return false;
+		}
+		m_isPrepared = true;
 	}
-#ifdef WITH_WLAN
-	if (f_mount (&m_FileSystem, DRIVE, 1) != FR_OK)
-	{
-		logger->Write ("CSidekickNet::Initialize", LogError,
-				"Cannot mount drive: %s", DRIVE);
-
-		return false;
-	}
-		
-	if (!m_WLAN.Initialize ())
-	{
-		logger->Write( "CSidekickNet::Initialize", LogNotice, 
-			"Couldn't initialize instance of WLAN."
-		);
-		return false;
-	}
-#else
-	if ( m_PiModel == MachineModel3APlus )
-	{
-		logger->Write( "CSidekickNet::Initialize", LogNotice, 
-			"Your Raspberry Pi model (3A+) doesn't have an ethernet socket. Skipping init of CNetSubSystem."
-		);
-		return false;
-	}
-#endif
-	if (!m_Net.Initialize (false))
-	{
-		logger->Write( "CSidekickNet::Initialize", LogNotice, 
-			"Couldn't initialize instance of CNetSubSystem."
-		);
-		return false;
-	}
-#ifdef WITH_WLAN
-	if (!m_WPASupplicant.Initialize ())
-	{
-		logger->Write( "CSidekickNet::Initialize", LogNotice, 
-			"Couldn't initialize instance of CWPASupplicant."
-		);
-		return false;
-	}
-#endif
-	unsigned sleepCount = 0;
-#ifdef WITH_WLAN
-	static const unsigned sleepLimit = 1000;
-#else
-	static const unsigned sleepLimit = 100;
-#endif
 	while (!m_Net.IsRunning () && sleepCount < sleepLimit)
 	{
 		m_pScheduler->MsSleep (100);
 		sleepCount ++;
 	}
-#ifdef WITH_WLAN
-	if (f_mount ( 0, DRIVE, 0) != FR_OK)
-	{
-		logger->Write ("CSidekickNet::Initialize", LogError,
-				"Cannot unmount drive: %s", DRIVE);
-		return false;
-	}
-#endif
+	if ( m_useWLAN )
+		if ( !unmountSDDrive() )
+			return false;
+
 	if (!m_Net.IsRunning () && sleepCount >= sleepLimit){
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
 			"Network connection is not running - is ethernet cable not attached?"
@@ -198,10 +149,88 @@ boolean CSidekickNet::Initialize()
 	//net connection is up and running now
 	m_isActive = true;
 	
+	//TODO: these resolves could be postponed to the moment where the first 
+	//actual access takes place
 	if ( m_DevHttpHost != 0)
 		m_DevHttpServerIP = getIPForHost(m_DevHttpHost);
 	if ( m_PlaygroundHttpHost != 0)
 		m_PlaygroundHttpServerIP = getIPForHost( m_PlaygroundHttpHost);
+	return true;
+}
+
+boolean CSidekickNet::unmountSDDrive()
+{
+	if (f_mount ( 0, DRIVE, 0) != FR_OK)
+	{
+		logger->Write ("CSidekickNet::Initialize", LogError,
+				"Cannot unmount drive: %s", DRIVE);
+		return false;
+	}
+	return true;
+}		
+
+
+boolean CSidekickNet::Prepare()
+{
+	if ( m_PiModel != MachineModel3APlus && m_PiModel != MachineModel3BPlus)
+	{
+		logger->Write( "CSidekickNet::Initialize", LogWarning, 
+			"Warning: The model of Raspberry Pi you are using is not a model supported by Sidekick64/264!"
+		);
+	}	
+	if (!m_USBHCI.Initialize ())
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Couldn't initialize instance of CUSBHCIDevice."
+		);
+		return false;
+	}
+	if (m_useWLAN)
+	{
+		#ifdef WITH_WLAN
+		if (f_mount (&m_FileSystem, DRIVE, 1) != FR_OK)
+		{
+			logger->Write ("CSidekickNet::Initialize", LogError,
+					"Cannot mount drive: %s", DRIVE);
+
+			return false;
+		}
+		if (!m_WLAN.Initialize ())
+		{
+			logger->Write( "CSidekickNet::Initialize", LogNotice, 
+				"Couldn't initialize instance of WLAN."
+			);
+			return false;
+		}
+		#endif
+	}
+	else if ( m_PiModel == MachineModel3APlus )
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Your Raspberry Pi model (3A+) doesn't have an ethernet socket. Skipping init of CNetSubSystem."
+		);
+		return false;
+	}
+
+	if (!m_Net.Initialize (false))
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Couldn't initialize instance of CNetSubSystem."
+		);
+		return false;
+	}
+	if (m_useWLAN)
+	{
+	#ifdef WITH_WLAN
+		if (!m_WPASupplicant.Initialize ())
+		{
+			logger->Write( "CSidekickNet::Initialize", LogNotice, 
+				"Couldn't initialize instance of CWPASupplicant."
+			);
+			return false;
+		}
+		#endif
+	}
 	return true;
 }
 
