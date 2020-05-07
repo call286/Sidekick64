@@ -169,6 +169,10 @@ boolean CSidekickNet::unmountSDDrive()
 	return true;
 }		
 
+boolean CSidekickNet::RaspiHasOnlyWLAN()
+{
+	return (m_PiModel == MachineModel3APlus );
+}
 
 boolean CSidekickNet::Prepare()
 {
@@ -177,7 +181,16 @@ boolean CSidekickNet::Prepare()
 		logger->Write( "CSidekickNet::Initialize", LogWarning, 
 			"Warning: The model of Raspberry Pi you are using is not a model supported by Sidekick64/264!"
 		);
-	}	
+	}
+	
+	if ( RaspiHasOnlyWLAN() && !m_useWLAN )
+	{
+		logger->Write( "CSidekickNet::Initialize", LogNotice, 
+			"Your Raspberry Pi model (3A+) doesn't have an ethernet socket. Skipping init of CNetSubSystem."
+		);
+		return false;
+	}
+	
 	if (!m_USBHCI.Initialize ())
 	{
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
@@ -203,13 +216,6 @@ boolean CSidekickNet::Prepare()
 			return false;
 		}
 		#endif
-	}
-	else if ( m_PiModel == MachineModel3APlus )
-	{
-		logger->Write( "CSidekickNet::Initialize", LogNotice, 
-			"Your Raspberry Pi model (3A+) doesn't have an ethernet socket. Skipping init of CNetSubSystem."
-		);
-		return false;
 	}
 
 	if (!m_Net.Initialize (false))

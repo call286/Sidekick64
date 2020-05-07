@@ -933,8 +933,14 @@ void printMainMenu()
 	printC64( menuX[ 0 ], menuY[ 0 ]+3, "F5", skinValues.SKIN_MENU_TEXT_KEY, 0 );
 	printC64( menuX[ 0 ]+3, menuY[ 0 ]+3, "Settings", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 #ifdef WITH_NET
-	printC64( menuX[ 0 ], menuY[ 0 ]+4, "F6", skinValues.SKIN_MENU_TEXT_KEY, 0 );
-	printC64( menuX[ 0 ]+3, menuY[ 0 ]+4, "Network", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	if (
+		(pSidekickNet->RaspiHasOnlyWLAN() && pSidekickNet->isWireless() ) ||
+	  (!pSidekickNet->RaspiHasOnlyWLAN() && !pSidekickNet->isWireless() )
+	)
+	{
+		printC64( menuX[ 0 ], menuY[ 0 ]+4, "F6", skinValues.SKIN_MENU_TEXT_KEY, 0 );
+		printC64( menuX[ 0 ]+3, menuY[ 0 ]+4, "Network", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	}
 #endif
 
 	printSidekickLogo();
@@ -1013,18 +1019,25 @@ void printNetworkScreen()
 		if (pSidekickNet->isWireless())
 		{
 			//                   "012345678901234567890123456789012345XXXX"
-			printC64( x+1, y1+5, "Press C to establish a wireless",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+5, "Press >C< to establish a wireless",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+6, "network connection! (Firmware files",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+7, "and a valid configuration file with",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+8, "SSID and passphrase have to be",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+9, "present on the SD card.)",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		}
+		else if (pSidekickNet->RaspiHasOnlyWLAN())
+		{
+			//                   "012345678901234567890123456789012345XXXX"
+			printC64( x+1, y1+6, "This Sidekick kernel does not",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+7, "support WLAN. Use a Raspberry Pi",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+8, "that has a network socket.",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		}
 		else
 		{
 			//                   "012345678901234567890123456789012345XXXX"
-			printC64( x+1, y1+5, "Please plug in a network cable if",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-			printC64( x+1, y1+6, "not already present. Press >C< to",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-			printC64( x+1, y1+7, "establish a network connection!",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+6, "Press >C< to establish a",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+7, "network connection!",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+8, "(Plug in a network cable first.)",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		}
 	}
 

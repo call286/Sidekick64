@@ -74,6 +74,7 @@ public:
 	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 	boolean isWireless(){ return m_useWLAN;};
+	boolean RaspiHasOnlyWLAN();
 
 	char * getNetworkMessageOfTheDay();
 	CString getTimeString();
