@@ -13,6 +13,11 @@ cd fatfs
 make $1 $2 || exit
 cd ..
 
+
+cd wlan
+./makeall $1 $2 || exit
+cd ..
+
 cd vc4
 
 cd sound

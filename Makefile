@@ -17,10 +17,11 @@ OBJS += kernel_sid.o kernel_sid8.o sound.o ./resid/dac.o ./resid/filter.o ./resi
 CFLAGS += -DUSE_VCHIQ_SOUND=$(USE_VCHIQ_SOUND) 
 
 LIBS	= $(CIRCLEHOME)/addon/vc4/sound/libvchiqsound.a \
-          $(CIRCLEHOME)/addon/vc4/vchiq/libvchiq.a \
-          $(CIRCLEHOME)/addon/linux/liblinuxemu.a \
-          $(CIRCLEHOME)/lib/net/libnet.a
-
+        $(CIRCLEHOME)/addon/vc4/vchiq/libvchiq.a \
+        $(CIRCLEHOME)/addon/linux/liblinuxemu.a \
+        $(CIRCLEHOME)/lib/net/libnet.a \
+        $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
+        $(CIRCLEHOME)/addon/wlan/libwlan.a
 endif
 
 ### MENU C16/+4 ###
@@ -33,9 +34,11 @@ OBJS += kernel_sid264.o sound.o ./resid/dac.o ./resid/filter.o ./resid/envelope.
 CFLAGS += -DUSE_VCHIQ_SOUND=$(USE_VCHIQ_SOUND) 
 
 LIBS	= $(CIRCLEHOME)/addon/vc4/sound/libvchiqsound.a \
-   	      $(CIRCLEHOME)/addon/vc4/vchiq/libvchiq.a \
-	      $(CIRCLEHOME)/addon/linux/liblinuxemu.a \
-				$(CIRCLEHOME)/lib/net/libnet.a
+ 	      $(CIRCLEHOME)/addon/vc4/vchiq/libvchiq.a \
+        $(CIRCLEHOME)/addon/linux/liblinuxemu.a \
+        $(CIRCLEHOME)/lib/net/libnet.a 
+#        $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
+#        $(CIRCLEHOME)/addon/wlan/libwlan.a
 endif
 
 ### individual Kernels for C64 ###
