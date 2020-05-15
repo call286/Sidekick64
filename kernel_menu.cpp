@@ -176,6 +176,7 @@ boolean CKernelMenu::Initialize( void )
 #endif
 
 #ifdef WITH_NET
+	logger->Write ("SidekickKernel", LogNotice, "Compile time: " __DATE__ " " __TIME__);
 	//TODO: this should be done in constructor of SideKickNet
 	static const char kernelUpdatePath[] = "/sidekick64/kernel8.img";
 	m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
@@ -365,7 +366,6 @@ void CKernelMenu::Run( void )
 			renderC64();
 			doneWithHandling = 1;
 			updateMenu = 0;
-			//to test this, please modify the ifdef and the code inside
 			#ifdef WITH_NET
 				m_InputPin.DisableInterrupt();
 				m_InputPin.DisconnectInterrupt();
@@ -373,11 +373,11 @@ void CKernelMenu::Run( void )
 				//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
 				//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
 				m_SidekickNet.handleQueuedNetworkAction();
-				handleC64( lastChar, &launchKernel, FILENAME, filenameKernal );
-				renderC64();
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
 				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+				handleC64( lastChar, &launchKernel, FILENAME, filenameKernal );
+				renderC64();
 			#endif
 			
 		}
@@ -623,7 +623,7 @@ int main( void )
 				KernelLaunchRun( kernel.m_InputPin, &kernel, FILENAME, false );
 			}
 			break;
-		case 40:
+		case 40: //prg file was extracted from d64 in memory
 			if ( subSID ) {
 				if ( octaSIDMode )
 					KernelSIDRun8( kernel.m_InputPin, &kernel, FILENAME, true, prgDataLaunch, prgSizeLaunch ); else

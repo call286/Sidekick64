@@ -78,6 +78,7 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isKernelUpdateQueued( false ),
 		m_isNMOTDQueued( false ),
 		m_devServerMessage( (char *) "Press M to see another message here." ),
+		m_networkActionStatusMsg( (char * ) ""),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
 		m_PlaygroundHttpHost(0),
@@ -245,8 +246,33 @@ boolean CSidekickNet::IsRunning ()
 	 return m_isActive; 
 };
 
+void CSidekickNet::queueNetworkInit()
+{ 
+	m_isNetworkInitQueued = true;
+	m_networkActionStatusMsg = (char*) "Trying to connect. Please wait.";
+};
+
+void CSidekickNet::queueKernelUpdate()
+{ 
+	m_isKernelUpdateQueued = true; 
+	m_networkActionStatusMsg = (char*) "Trying to update kernel. Please wait.";
+};
+
+void CSidekickNet::queueNetworkMessageOfTheDay()
+{
+ 	m_isNMOTDQueued = true;
+	m_networkActionStatusMsg = (char*) "Trying to get NMOTD. Please wait.";
+};
+
 void CSidekickNet::handleQueuedNetworkAction()
 {
+	/*
+	if ( 	m_networkActionStatusMsg != (char *) "")
+	{
+		m_networkActionStatusMsg = (char *) "";
+		return;
+	}
+*/
 	if ( m_isNetworkInitQueued && !m_isActive )
 	{
 		assert (!m_isActive);
@@ -261,7 +287,7 @@ void CSidekickNet::handleQueuedNetworkAction()
 	else if (m_isKernelUpdateQueued && m_isActive)
 	{
 	 	CheckForSidekickKernelUpdate();
-		 m_isKernelUpdateQueued = false;
+		m_isKernelUpdateQueued = false;
  	}
 	else if (m_isNMOTDQueued && m_isActive)
 	{
@@ -269,6 +295,17 @@ void CSidekickNet::handleQueuedNetworkAction()
 		m_isNMOTDQueued = false;
 	}
 };
+
+boolean CSidekickNet::isAnyNetworkActionQueued()
+{
+	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isNMOTDQueued;
+}
+
+char * CSidekickNet::getNetworkActionStatusMessage()
+{
+	return m_networkActionStatusMsg;
+}
+
 
 CString CSidekickNet::getTimeString()
 {
@@ -303,9 +340,9 @@ CIPAddress CSidekickNet::getIPForHost( const char * host )
 	assert (m_isActive);
 	CIPAddress ip;
 	if (!m_DNSClient.Resolve (host, &ip))
-	{
 		logger->Write ("CSidekickNet::getIPForHost", LogWarning, "Cannot resolve: %s",host);
-	}
+	else
+		logger->Write ("CSidekickNet::getIPForHost", LogNotice, "DNS resolve ok for: %s",host);
 	return ip;
 }
 
@@ -374,6 +411,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 			"Now trying to write kernel file to SD card, bytes to write: %i", iFileLength
 		);
 		writeFile( logger, DRIVE, FILENAME_HTTPDUMP, (u8*) pFileBuffer, iFileLength );
+		m_pScheduler->MsSleep (500);
 		logger->Write( "SidekickKernelUpdater", LogNotice, "Finished writing kernel to SD card");
 	}
 	return true;

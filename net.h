@@ -67,15 +67,16 @@ public:
 	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void updateNetworkMessageOfTheDay();
-	void queueNetworkInit(){ m_isNetworkInitQueued = true; };
-	void queueKernelUpdate(){ m_isKernelUpdateQueued = true; };
-	void queueNetworkMessageOfTheDay(){ m_isNMOTDQueued = true; };
+	void queueNetworkInit();
+	void queueKernelUpdate();
+	void queueNetworkMessageOfTheDay();
 	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
+	boolean isAnyNetworkActionQueued();
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 	boolean isWireless(){ return m_useWLAN;};
 	boolean RaspiHasOnlyWLAN();
-
+  char * getNetworkActionStatusMessage();
 	char * getNetworkMessageOfTheDay();
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
@@ -112,6 +113,7 @@ private:
 	boolean m_isKernelUpdateQueued;
 	boolean m_isNMOTDQueued;
 	char * m_devServerMessage;
+	char * m_networkActionStatusMsg;
   TMachineModel m_PiModel;
 	const char * m_DevHttpHost;
 	const char * m_PlaygroundHttpHost;
