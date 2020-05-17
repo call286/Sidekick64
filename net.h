@@ -67,9 +67,12 @@ public:
 	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void updateNetworkMessageOfTheDay();
+	void updateSktxScreenContent();
 	void queueNetworkInit();
 	void queueKernelUpdate();
 	void queueNetworkMessageOfTheDay();
+	void queueSktxKeypress( int );
+	void queueSktxRefresh();
 	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( unsigned type);
 	boolean isAnyNetworkActionQueued();
@@ -78,6 +81,7 @@ public:
 	boolean RaspiHasOnlyWLAN();
   char * getNetworkActionStatusMessage();
 	char * getNetworkMessageOfTheDay();
+	char * getSktxScreenContent(){ return m_sktxScreenContent; };
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
 	CString getRaspiModelName();
@@ -98,13 +102,13 @@ private:
 	CBcm4343Device    m_WLAN;
 #endif
 	CNetSubSystem     m_Net;
+	CDNSClient        m_DNSClient;
 	CIPAddress        m_DevHttpServerIP;
 	CIPAddress        m_PlaygroundHttpServerIP;
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
-	FATFS m_FileSystem;
+	FATFS             m_FileSystem;
 #endif
-	CDNSClient        m_DNSClient;
 
 	boolean m_useWLAN;
 	boolean m_isActive;
@@ -112,14 +116,18 @@ private:
 	boolean m_isNetworkInitQueued;
 	boolean m_isKernelUpdateQueued;
 	boolean m_isNMOTDQueued;
+	boolean m_isSktxKeypressQueued;
 	char * m_devServerMessage;
 	char * m_networkActionStatusMsg;
+	char * m_sktxScreenContent;
   TMachineModel m_PiModel;
 	const char * m_DevHttpHost;
 	const char * m_PlaygroundHttpHost;
 	unsigned m_SidekickKernelUpdatePath;
 	unsigned m_queueDelay;
 	unsigned m_effortsSinceLastEvent;
+	unsigned m_skipSktxRefresh;
+	int m_sktxKey;
 };
 
 #endif

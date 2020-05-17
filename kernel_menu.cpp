@@ -375,8 +375,6 @@ void CKernelMenu::Run( void )
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
 				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
-				//handleC64( lastChar, &launchKernel, FILENAME, filenameKernal );
-				//renderC64();
 			#endif
 			
 		}

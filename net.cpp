@@ -80,12 +80,14 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isNMOTDQueued( false ),
 		m_devServerMessage( (char *) "Press M to see another message here." ),
 		m_networkActionStatusMsg( (char * ) ""),
+		m_sktxScreenContent( (char * ) ""),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
 		m_PlaygroundHttpHost(0),
 		m_SidekickKernelUpdatePath(0),
 		m_queueDelay(0),
-		m_effortsSinceLastEvent(0)
+		m_effortsSinceLastEvent(0),
+		m_sktxKey(0)
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
@@ -250,28 +252,46 @@ boolean CSidekickNet::Prepare()
 boolean CSidekickNet::IsRunning ()
 {
 	 return m_isActive; 
-};
+}
 
 void CSidekickNet::queueNetworkInit()
 { 
 	m_isNetworkInitQueued = true;
 	m_networkActionStatusMsg = (char*) "Trying to connect. Please wait.";
 	m_queueDelay = 1;
-};
+}
 
 void CSidekickNet::queueKernelUpdate()
 { 
 	m_isKernelUpdateQueued = true; 
 	m_networkActionStatusMsg = (char*) "Trying to update kernel. Please wait.";
 	m_queueDelay = 1;
-};
+}
 
 void CSidekickNet::queueNetworkMessageOfTheDay()
 {
  	m_isNMOTDQueued = true;
 	m_networkActionStatusMsg = (char*) "Trying to get NMOTD. Please wait.";
 	m_queueDelay = 1;
-};
+}
+
+void CSidekickNet::queueSktxKeypress( int key )
+{
+	m_isSktxKeypressQueued = true;
+	m_sktxKey = key;
+	m_queueDelay = 0;
+}
+
+void CSidekickNet::queueSktxRefresh()
+{
+	m_skipSktxRefresh++;
+	if ( m_skipSktxRefresh > 50 )
+	{
+		m_skipSktxRefresh = 0;
+		queueSktxKeypress( 92 );
+	}
+}
+
 
 void CSidekickNet::handleQueuedNetworkAction()
 {
@@ -314,23 +334,32 @@ void CSidekickNet::handleQueuedNetworkAction()
 		m_effortsSinceLastEvent = 0;
 		return;
 	}
-	else if (m_isKernelUpdateQueued && m_isActive)
+	else if (m_isActive)
 	{
-	 	CheckForSidekickKernelUpdate();
-		m_isKernelUpdateQueued = false;
-		m_effortsSinceLastEvent = 0;
- 	}
-	else if (m_isNMOTDQueued && m_isActive)
-	{
-		updateNetworkMessageOfTheDay();
-		m_effortsSinceLastEvent = 0;
-		m_isNMOTDQueued = false;
+		if ( m_isKernelUpdateQueued )
+		{
+		 	CheckForSidekickKernelUpdate();
+			m_isKernelUpdateQueued = false;
+			m_effortsSinceLastEvent = 0;
+ 		}
+		else if (m_isNMOTDQueued)
+		{
+			updateNetworkMessageOfTheDay();
+			m_isNMOTDQueued = false;
+			m_effortsSinceLastEvent = 0;
+		}
+		else if (m_isSktxKeypressQueued)
+		{
+			updateSktxScreenContent();
+			m_isSktxKeypressQueued = false;
+			m_effortsSinceLastEvent = 0;
+		}
 	}
-};
+}
 
 boolean CSidekickNet::isAnyNetworkActionQueued()
 {
-	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isNMOTDQueued;
+	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isNMOTDQueued || m_isSktxKeypressQueued;
 }
 
 char * CSidekickNet::getNetworkActionStatusMessage()
@@ -490,6 +519,39 @@ void CSidekickNet::updateNetworkMessageOfTheDay(){
 		m_devServerMessage = (char *) msgNotFound;
 	}
 }
+
+void CSidekickNet::updateSktxScreenContent(){
+	if (!m_isActive || m_PlaygroundHttpHost == 0)
+	{
+		m_sktxScreenContent = (char *) msgNoConnection; //FIXME: there's a memory leak in here
+		return;
+	}
+	unsigned iFileLength = 0;
+	char * pResponseBuffer = new char[2048];	// +1 for 0-termination
+	if (pResponseBuffer == 0)
+	{
+		logger->Write( "updateSktxScreenContent", LogError, "Cannot allocate document buffer");
+		return;
+	}
+  CString path = "/sktx.php?key=";
+	CString Number; 
+	Number.Format ("%02X", m_sktxKey);
+	path.Append( Number );
+	m_sktxKey = 0;
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, path, pResponseBuffer, iFileLength))
+	{
+		if ( iFileLength > 0 )
+			pResponseBuffer[iFileLength-1] = '\0';
+		m_sktxScreenContent = pResponseBuffer;
+		pResponseBuffer = 0;
+		//logger->Write( "updateNetworkMessageOfTheDay", LogNotice, "HTTP Document content: '%s'", pResponseBuffer);
+	}
+	else
+	{
+		m_sktxScreenContent = (char *) msgNotFound;
+	}
+}
+
 
 boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead)
 {
