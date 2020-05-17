@@ -176,10 +176,9 @@ boolean CKernelMenu::Initialize( void )
 #endif
 
 #ifdef WITH_NET
-	logger->Write ("SidekickKernel", LogNotice, "Compile time: " __DATE__ " " __TIME__);
+	logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
 	//TODO: this should be done in constructor of SideKickNet
-	static const char kernelUpdatePath[] = "/sidekick64/kernel8.img";
-	m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
+	m_SidekickNet.setSidekickKernelUpdatePath( 64 );
 	/*
 	This is now triggered from Network screen by the user
 	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
@@ -370,14 +369,14 @@ void CKernelMenu::Run( void )
 				m_InputPin.DisableInterrupt();
 				m_InputPin.DisconnectInterrupt();
 				EnableIRQs();
-				//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
-				//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
+				//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024;
+				//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i KB", freeSpace);
 				m_SidekickNet.handleQueuedNetworkAction();
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
 				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
-				handleC64( lastChar, &launchKernel, FILENAME, filenameKernal );
-				renderC64();
+				//handleC64( lastChar, &launchKernel, FILENAME, filenameKernal );
+				//renderC64();
 			#endif
 			
 		}

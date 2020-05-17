@@ -44,15 +44,16 @@
 static const char NTPServer[]    = "pool.ntp.org";
 static const int nTimeZone       = 2*60;		// minutes diff to UTC
 static const char DRIVE[] = "SD:";
-// Sidekick Developer HTTP Server configuration
-//static const char KernelUpdateFile[] = "/kernel8.img";
-//change the path of KernelUpdateFile to your needs
 //nDocMaxSize reserved 800 KB as the maximum size of the kernel file
 static const unsigned nDocMaxSize = 900*1024;
-static const char FILENAME_HTTPDUMP[] = "SD:kernel8.img";
+static const char KERNEL_IMG_NAME[] = "kernel8.img";
+static const char KERNEL_SAVE_LOCATION[] = "SD:kernel8.img";
+static const char RPIMENU64_SAVE_LOCATION[] = "SD:C64/rpimenu.prg";
 static const char msgNoConnection[] = "Sorry, no network connection!";
 static const char msgNotFound[]     = "Message not found. :(";
-static const char filepath[]        = "/not_there.php";
+static const char NMOTDfile[]       = "/not_there.php";
+static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.img", "/sidekick264/kernel8.img"};
+static const char * prgUpdatePath[2] = { "/sidekick64/rpimenu.prg", "/sidekick264/rpimenu.prg"};
 
 #ifdef WITH_WLAN
 #define DRIVE		"SD:"
@@ -82,7 +83,9 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
 		m_PlaygroundHttpHost(0),
-		m_SidekickKernelUpdatePath(0)
+		m_SidekickKernelUpdatePath(0),
+		m_queueDelay(0),
+		m_effortsSinceLastEvent(0)
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
@@ -90,10 +93,8 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 
 	#ifdef NET_DEV_SERVER
 	  m_DevHttpHost = (const char *) NET_DEV_SERVER;
-		m_SidekickKernelLocation = FILENAME_HTTPDUMP;
 	#else
 	  m_DevHttpHost = 0;
-		m_SidekickKernelLocation = 0;
 	#endif
 	
 	#ifdef NET_PUBLIC_PLAY_SERVER
@@ -111,6 +112,11 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 	//timezone is not really related to net stuff, it could go somewhere else
 	m_pTimer->SetTimeZone (nTimeZone);
 }
+
+void CSidekickNet::setSidekickKernelUpdatePath( unsigned type)
+{
+	m_SidekickKernelUpdatePath = type;
+};
 
 boolean CSidekickNet::Initialize()
 {
@@ -250,22 +256,45 @@ void CSidekickNet::queueNetworkInit()
 { 
 	m_isNetworkInitQueued = true;
 	m_networkActionStatusMsg = (char*) "Trying to connect. Please wait.";
+	m_queueDelay = 1;
 };
 
 void CSidekickNet::queueKernelUpdate()
 { 
 	m_isKernelUpdateQueued = true; 
 	m_networkActionStatusMsg = (char*) "Trying to update kernel. Please wait.";
+	m_queueDelay = 1;
 };
 
 void CSidekickNet::queueNetworkMessageOfTheDay()
 {
  	m_isNMOTDQueued = true;
 	m_networkActionStatusMsg = (char*) "Trying to get NMOTD. Please wait.";
+	m_queueDelay = 1;
 };
 
 void CSidekickNet::handleQueuedNetworkAction()
 {
+	#ifdef WITH_WLAN
+	if (m_isActive && !isAnyNetworkActionQueued())
+	{
+		m_effortsSinceLastEvent++;
+		if ( m_effortsSinceLastEvent > 200)
+		{
+			//as a WLAN keep-alive, auto queue a network event / HTTP request
+			//to avoid WLAN going into "zombie" disconnected mode
+			m_isNMOTDQueued = true;
+			m_effortsSinceLastEvent = 0;
+		}
+	}
+	#endif
+	
+	if (m_queueDelay > 0 )
+	{
+		m_queueDelay--;
+		return;
+	}
+
 	/*
 	if ( 	m_networkActionStatusMsg != (char *) "")
 	{
@@ -282,16 +311,19 @@ void CSidekickNet::handleQueuedNetworkAction()
 			while (!UpdateTime() && tries < 3){ tries++;};
 		}
 		m_isNetworkInitQueued = false;
+		m_effortsSinceLastEvent = 0;
 		return;
 	}
 	else if (m_isKernelUpdateQueued && m_isActive)
 	{
 	 	CheckForSidekickKernelUpdate();
 		m_isKernelUpdateQueued = false;
+		m_effortsSinceLastEvent = 0;
  	}
 	else if (m_isNMOTDQueued && m_isActive)
 	{
 		updateNetworkMessageOfTheDay();
+		m_effortsSinceLastEvent = 0;
 		m_isNMOTDQueued = false;
 	}
 };
@@ -390,13 +422,14 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 		);
 		return false;
 	}
+	/*
 	if ( m_SidekickKernelUpdatePath == 0 )
 	{
 		logger->Write( "CSidekickNet::CheckForSidekickKernelUpdate", LogNotice, 
 			"Skipping check: HTTP update path is not defined."
 		);
 		return false;
-	}
+	}*/
 	assert (m_isActive);
 	unsigned iFileLength = 0;
 	char * pFileBuffer = new char[nDocMaxSize+1];	// +1 for 0-termination
@@ -405,22 +438,36 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogError, "Cannot allocate document buffer");
 		return false;
 	}
-	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, m_SidekickKernelUpdatePath, pFileBuffer, iFileLength))
+
+	unsigned type = 0;
+	if ( m_SidekickKernelUpdatePath == 264 ) type = 1;
+		 
+	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, kernelUpdatePath[type], pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", iFileLength
 		);
-		writeFile( logger, DRIVE, FILENAME_HTTPDUMP, (u8*) pFileBuffer, iFileLength );
+		writeFile( logger, DRIVE, KERNEL_SAVE_LOCATION, (u8*) pFileBuffer, iFileLength );
 		m_pScheduler->MsSleep (500);
 		logger->Write( "SidekickKernelUpdater", LogNotice, "Finished writing kernel to SD card");
 	}
+	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, prgUpdatePath[type], pFileBuffer, iFileLength))
+	{
+		logger->Write( "SidekickKernelUpdater", LogNotice, 
+			"Now trying to write rpimenu.prg file to SD card, bytes to write: %i", iFileLength
+		);
+		writeFile( logger, DRIVE, RPIMENU64_SAVE_LOCATION, (u8*) pFileBuffer, iFileLength );
+		m_pScheduler->MsSleep (500);
+		logger->Write( "SidekickKernelUpdater", LogNotice, "Finished writing file rpimenu.prg to SD card");
+	}
+	
 	return true;
 }
 
 void CSidekickNet::updateNetworkMessageOfTheDay(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{
-		m_devServerMessage = (char *) msgNoConnection;
+		m_devServerMessage = (char *) msgNoConnection; //FIXME: there's a memory leak in here
 		return;
 	}
 	unsigned iFileLength = 0;
@@ -430,11 +477,12 @@ void CSidekickNet::updateNetworkMessageOfTheDay(){
 		logger->Write( "updateNetworkMessageOfTheDay", LogError, "Cannot allocate document buffer");
 		return;
 	}
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, filepath, pResponseBuffer, iFileLength))
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, NMOTDfile, pResponseBuffer, iFileLength))
 	{
 		if ( iFileLength > 0 )
 			pResponseBuffer[iFileLength-1] = '\0';
 		m_devServerMessage = pResponseBuffer;
+		pResponseBuffer = 0;
 		//logger->Write( "updateNetworkMessageOfTheDay", LogNotice, "HTTP Document content: '%s'", pResponseBuffer);
 	}
 	else

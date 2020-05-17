@@ -2,6 +2,11 @@
 # Makefile
 #
 CIRCLEHOME ?= circle
+GIT_BRANCH=`git rev-parse --abbrev-ref HEAD`
+GIT_HASH=`git rev-parse --short HEAD`
+COMPILE_TIME=`date +'%Y-%m-%d %H:%M:%S %Z'`
+CFLAGS += -DGIT_HASH="\"$(GIT_HASH)\"" -DCOMPILE_TIME="\"$(COMPILE_TIME)\"" -DGIT_BRANCH="\"$(GIT_BRANCH)\""
+
 
 EXTRACLEAN = OLED/*.o resid/*.o
 

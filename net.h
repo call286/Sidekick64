@@ -71,7 +71,7 @@ public:
 	void queueKernelUpdate();
 	void queueNetworkMessageOfTheDay();
 	void handleQueuedNetworkAction();
-	void setSidekickKernelUpdatePath( const char * path){m_SidekickKernelUpdatePath = path;};
+	void setSidekickKernelUpdatePath( unsigned type);
 	boolean isAnyNetworkActionQueued();
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 	boolean isWireless(){ return m_useWLAN;};
@@ -98,14 +98,14 @@ private:
 	CBcm4343Device    m_WLAN;
 #endif
 	CNetSubSystem     m_Net;
-	CDNSClient        m_DNSClient;
 	CIPAddress        m_DevHttpServerIP;
 	CIPAddress        m_PlaygroundHttpServerIP;
-	
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
 	FATFS m_FileSystem;
 #endif
+	CDNSClient        m_DNSClient;
+
 	boolean m_useWLAN;
 	boolean m_isActive;
 	boolean m_isPrepared;
@@ -117,8 +117,9 @@ private:
   TMachineModel m_PiModel;
 	const char * m_DevHttpHost;
 	const char * m_PlaygroundHttpHost;
-	const char * m_SidekickKernelLocation;
-	const char * m_SidekickKernelUpdatePath;
+	unsigned m_SidekickKernelUpdatePath;
+	unsigned m_queueDelay;
+	unsigned m_effortsSinceLastEvent;
 };
 
 #endif

@@ -695,26 +695,24 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			return;
 		}
-		if ( k == 'c' || k == 'C')
+		else if ( k == 'c' || k == 'C')
 		{
-			menuScreen = MENU_NETWORK;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			pSidekickNet->queueNetworkInit();
-			return;
+			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
 		}
-		if ( k == 'u' || k == 'U')
+		else if ( k == 'u' || k == 'U')
 		{
-			menuScreen = MENU_NETWORK;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			pSidekickNet->queueKernelUpdate();
-			return;
+			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
 		}
-		if ( k == 'm' || k == 'M')
+		else if ( k == 'm' || k == 'M')
 		{
-			menuScreen = MENU_NETWORK;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			pSidekickNet->queueNetworkMessageOfTheDay();
-			return;
+			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
+		}
+		else if ( k == 'd' || k == 'D')
+		{
+				if ( errorMsg != NULL ) errorMsg = NULL;
 		}
 	} else
 #endif		
@@ -1038,30 +1036,26 @@ void printNetworkScreen()
 			printC64( x+1, y1+6, "Press >C< to establish a",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+7, "network connection!",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+8, "(Plug in a network cable first.)",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			//printC64( x+1, y1+9, errorMsg,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		}
 	}
 
-	CString strKernelCV   = "Circle ";
-	CString strKernelTS   = "Compiled on: ";
-	strKernelCV.Append( CIRCLE_VERSION_STRING );
-	strKernelTS.Append( __DATE__ );
-	strKernelTS.Append( ", " );
-	strKernelTS.Append( __TIME__ );
-	
-	printC64( x+1, y1+ 11, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( x+1, y1+12, strKernelTS, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( x+1, y1+11, "Sidekick Kernel Info", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( x+1, y1+12, "Compiled on: " COMPILE_TIME, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( x+1, y1+13, "Git branch : " GIT_BRANCH, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( x+1, y1+14, "Git hash   : " GIT_HASH, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	if ( pSidekickNet->IsRunning() && pSidekickNet->isDevServerConfigured())
 	{
-		printC64( x+1, y1+13, "Press >U< for kernel update via HTTP", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		printC64( x+1, y1+15, "Press >U< for kernel update via HTTP", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	}
 	
-	printC64( x+1, y1+15, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( x+1, y1+16, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( x+1, y1+16, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( x+1, y1+17, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
 	printC64( x+1, y1+18, "System time", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+19, strTimeDate, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 
-	printC64( x+28, 24, strKernelCV, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
+	printC64( x+28, 24, "Circle " CIRCLE_VERSION_STRING, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 	
 	printSidekickLogo();
 
@@ -1171,6 +1165,12 @@ void printSettingsScreen()
 		injectPOKE( 53272, 23 ); 
 }
 
+void setErrorMsg( char * msg )
+{
+	errorMsg = msg;
+	previousMenuScreen = menuScreen;
+	menuScreen = MENU_ERROR;
+}
 
 void renderC64()
 {
@@ -1190,21 +1190,22 @@ void renderC64()
 	if ( menuScreen == MENU_NETWORK )
 	{
 		printNetworkScreen();
-	} else
+	}
 #endif	
 	//if ( menuScreen == MENU_ERROR )
 	{
-		if ( errorMsg != NULL )
-		{
-			int convert = 0;
-			if ( previousMenuScreen == MENU_BROWSER )
-				convert = 3;
-
-			printC64( 0, 10, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_ERROR_BAR, 0, 1 );
-			printC64( 0, 11, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
-			printC64( 0, 12, errorMsg, skinValues.SKIN_ERROR_TEXT, 0, convert );
-			printC64( 0, 13, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
-			printC64( 0, 14, "\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8", skinValues.SKIN_ERROR_BAR, 0, 1 );
-		}
+		if ( errorMsg != NULL ) renderErrorMsg();
 	}
+}
+
+void renderErrorMsg()
+{
+	int convert = 0;
+	if ( previousMenuScreen == MENU_BROWSER )
+		convert = 3;
+	printC64( 0, 10, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_ERROR_BAR, 0, 1 );
+	printC64( 0, 11, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
+	printC64( 0, 12, errorMsg, skinValues.SKIN_ERROR_TEXT, 0, convert );
+	printC64( 0, 13, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
+	printC64( 0, 14, "\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8", skinValues.SKIN_ERROR_BAR, 0, 1 );
 }
