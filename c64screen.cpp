@@ -712,11 +712,12 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 			pSidekickNet->queueKernelUpdate();
 			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
 		}
+		/*
 		else if ( k == 'm' || k == 'M')
 		{
 			pSidekickNet->queueNetworkMessageOfTheDay();
 			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
-		}
+		}*/
 		else if ( k == 'd' || k == 'D')
 		{
 				if ( errorMsg != NULL ) errorMsg = NULL;
@@ -1034,8 +1035,8 @@ void printNetworkScreen()
 		printC64( x+1, y1+5, strDefGateway, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		
-		printC64( x+1, y1+8, "Network >m<essage of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-		printC64( x+1, y1+9, pSidekickNet->getNetworkMessageOfTheDay(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+		//printC64( x+1, y1+8, "Network >m<essage of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+		//printC64( x+1, y1+9, pSidekickNet->getNetworkMessageOfTheDay(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		
 	}
 	else{
@@ -1095,22 +1096,37 @@ void printNetworkScreen()
 
 void printSKTXScreen()
 {
-
-	clearC64();
-	//               "012345678901234567890123456789012345XXXX"
-	printC64( 0,  1, "        .- sidekick64-browser -.        ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( 0, 24, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0, 3 );
+	const unsigned yOffset = 0;
 	
-	u32 y1 = 2;
-	const u32 x = 1;
-
-	printC64( x+1, y1, "Welcome to SKTX!", skinValues.SKIN_MENU_TEXT_HEADER, 0,3 );
-	printC64( 0, y1+1, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_MENU_BORDER_COLOR, 0, 1 );
-	printC64( 0, y1+21, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_MENU_BORDER_COLOR, 0, 1 );
+	//               "012345678901234567890123456789012345XXXX"
+//	printC64( 0,  1, "          .- sidekick64-sktx -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+//	printC64( 0, 24, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0, 3 );
+	
+	//printC64( x+1, y1, "Welcome to SKTX!", skinValues.SKIN_MENU_TEXT_HEADER, 0,3 );
+//	printC64( 0, 2, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_MENU_BORDER_COLOR, 0, 1 );
+//	printC64( 0, 23, "\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9\xf9", skinValues.SKIN_MENU_BORDER_COLOR, 0, 1 );
 
 	if ( pSidekickNet->IsRunning() )
 	{
-		printC64( 0, y1+2, pSidekickNet->getSktxScreenContent(), skinValues.SKIN_MENU_TEXT_HEADER, 0, 4);//4 is undefined
+		if ( pSidekickNet->IsSktxScreenToBeCleared() ) clearC64();
+		//printC64( 0, y1+2, (char *)pSidekickNet->getSktxScreenContent(), skinValues.SKIN_MENU_TEXT_HEADER, 0, 4);//4 is undefined
+
+		if ( !pSidekickNet->IsSktxScreenUnchanged() )
+		{
+			u16 pos = 0;
+			u8 color = 0;
+			unsigned y = 0;
+			unsigned x = 0;
+			char * content;
+			while (!pSidekickNet->IsSktxScreenContentEndReached())
+			{
+				content = (char *) pSidekickNet->GetSktxScreenContentChunk( pos, color);
+				y = pos / 40;
+				x = pos % 40;
+				printC64( x, y+yOffset, content, color, 0, 4);//4 is undefined
+			}
+			pSidekickNet->ResetSktxScreenContentChunks();
+		}
 	}
 
 	startInjectCode();
@@ -1219,6 +1235,11 @@ void printSettingsScreen()
 	if ( skinFontLoaded )
 		injectPOKE( 53272, 30 ); else
 		injectPOKE( 53272, 23 ); 
+}
+
+void clearErrorMsg()
+{
+	errorMsg = NULL;
 }
 
 void setErrorMsg( char * msg )

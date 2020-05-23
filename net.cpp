@@ -33,6 +33,7 @@
 
 #include "net.h"
 #include "helpers.h"
+#include "c64screen.h"
 
 #include <circle/net/ntpclient.h>
 #include <circle/net/httpclient.h>
@@ -52,13 +53,15 @@ static const char RPIMENU64_SAVE_LOCATION[] = "SD:C64/rpimenu.prg";
 static const char msgNoConnection[] = "Sorry, no network connection!";
 static const char msgNotFound[]     = "Message not found. :(";
 static const char NMOTDfile[]       = "/not_there.php";
-static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.img", "/sidekick264/kernel8.img"};
 static const char * prgUpdatePath[2] = { "/sidekick64/rpimenu.prg", "/sidekick264/rpimenu.prg"};
 
 #ifdef WITH_WLAN
 #define DRIVE		"SD:"
 #define FIRMWARE_PATH	DRIVE "/firmware/"		// firmware files must be provided here
 #define CONFIG_FILE	DRIVE "/wpa_supplicant.conf"
+static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.wlan.img", "/sidekick264/kernel8.wlan.img"};
+#else
+static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.img", "/sidekick264/kernel8.img"};
 #endif
 
 CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer, CScheduler * pScheduler, CEMMCDevice * pEmmcDevice  )
@@ -80,14 +83,21 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isNMOTDQueued( false ),
 		m_devServerMessage( (char *) "Press M to see another message here." ),
 		m_networkActionStatusMsg( (char * ) ""),
-		m_sktxScreenContent( (char * ) ""),
+		m_sktxScreenContent( (unsigned char * ) ""),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
+		m_DevHttpHostPort(0),
 		m_PlaygroundHttpHost(0),
+		m_PlaygroundHttpHostPort(0),
 		m_SidekickKernelUpdatePath(0),
 		m_queueDelay(0),
 		m_effortsSinceLastEvent(0),
-		m_sktxKey(0)
+		m_skipSktxRefresh(0),
+		m_sktxScreenPosition(0),
+		m_sktxReponseLength(0),
+		m_sktxReponseType(0),
+		m_sktxKey(0),
+		m_sktxSession(0)
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
@@ -95,12 +105,22 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 
 	#ifdef NET_DEV_SERVER
 	  m_DevHttpHost = (const char *) NET_DEV_SERVER;
+		#ifdef DNET_DEV_SERVER_PORT
+			m_DevHttpHostPort = DNET_DEV_SERVER_PORT;
+		#else
+			m_DevHttpHostPort = HTTP_PORT;
+		#endif
 	#else
 	  m_DevHttpHost = 0;
 	#endif
 	
 	#ifdef NET_PUBLIC_PLAY_SERVER
 	  m_PlaygroundHttpHost = (const char *) NET_PUBLIC_PLAY_SERVER;
+		#ifdef NET_PUBLIC_PLAY_SERVER_PORT
+			m_PlaygroundHttpHostPort = NET_PUBLIC_PLAY_SERVER_PORT;
+		#else
+			m_PlaygroundHttpHostPort = HTTP_PORT;
+		#endif
 	#else
 	  m_PlaygroundHttpHost = 0;
 	#endif
@@ -162,8 +182,14 @@ boolean CSidekickNet::Initialize()
 	//actual access takes place
 	if ( m_DevHttpHost != 0)
 		m_DevHttpServerIP = getIPForHost(m_DevHttpHost);
-	if ( m_PlaygroundHttpHost != 0)
-		m_PlaygroundHttpServerIP = getIPForHost( m_PlaygroundHttpHost);
+	if ( m_PlaygroundHttpHost != 0 ){
+		if ( m_DevHttpHost != m_PlaygroundHttpHost)
+			m_PlaygroundHttpServerIP = getIPForHost( m_PlaygroundHttpHost);
+		else
+			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
+	}
+		
+	clearErrorMsg(); //on c64screen
 	return true;
 }
 
@@ -268,6 +294,7 @@ void CSidekickNet::queueKernelUpdate()
 	m_queueDelay = 1;
 }
 
+
 void CSidekickNet::queueNetworkMessageOfTheDay()
 {
  	m_isNMOTDQueued = true;
@@ -285,7 +312,7 @@ void CSidekickNet::queueSktxKeypress( int key )
 void CSidekickNet::queueSktxRefresh()
 {
 	m_skipSktxRefresh++;
-	if ( m_skipSktxRefresh > 50 )
+	if ( m_skipSktxRefresh > 1 )
 	{
 		m_skipSktxRefresh = 0;
 		queueSktxKeypress( 92 );
@@ -342,12 +369,14 @@ void CSidekickNet::handleQueuedNetworkAction()
 			m_isKernelUpdateQueued = false;
 			m_effortsSinceLastEvent = 0;
  		}
+/*		
 		else if (m_isNMOTDQueued)
 		{
 			updateNetworkMessageOfTheDay();
 			m_isNMOTDQueued = false;
 			m_effortsSinceLastEvent = 0;
 		}
+*/		
 		else if (m_isSktxKeypressQueued)
 		{
 			updateSktxScreenContent();
@@ -471,7 +500,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	unsigned type = 0;
 	if ( m_SidekickKernelUpdatePath == 264 ) type = 1;
 		 
-	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, kernelUpdatePath[type], pFileBuffer, iFileLength))
+	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, m_DevHttpHostPort, kernelUpdatePath[type], pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", iFileLength
@@ -480,7 +509,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 		m_pScheduler->MsSleep (500);
 		logger->Write( "SidekickKernelUpdater", LogNotice, "Finished writing kernel to SD card");
 	}
-	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, prgUpdatePath[type], pFileBuffer, iFileLength))
+	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, m_DevHttpHostPort, prgUpdatePath[type], pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write rpimenu.prg file to SD card, bytes to write: %i", iFileLength
@@ -492,6 +521,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	
 	return true;
 }
+
 
 void CSidekickNet::updateNetworkMessageOfTheDay(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
@@ -506,7 +536,7 @@ void CSidekickNet::updateNetworkMessageOfTheDay(){
 		logger->Write( "updateNetworkMessageOfTheDay", LogError, "Cannot allocate document buffer");
 		return;
 	}
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, NMOTDfile, pResponseBuffer, iFileLength))
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, NMOTDfile, pResponseBuffer, iFileLength))
 	{
 		if ( iFileLength > 0 )
 			pResponseBuffer[iFileLength-1] = '\0';
@@ -520,40 +550,110 @@ void CSidekickNet::updateNetworkMessageOfTheDay(){
 	}
 }
 
+
 void CSidekickNet::updateSktxScreenContent(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{
-		m_sktxScreenContent = (char *) msgNoConnection; //FIXME: there's a memory leak in here
+		m_sktxScreenContent = (unsigned char *) msgNoConnection; //FIXME: there's a memory leak in here
 		return;
 	}
-	unsigned iFileLength = 0;
 	char * pResponseBuffer = new char[2048];	// +1 for 0-termination
 	if (pResponseBuffer == 0)
 	{
 		logger->Write( "updateSktxScreenContent", LogError, "Cannot allocate document buffer");
 		return;
 	}
-  CString path = "/sktx.php?key=";
+  CString path = "/sktx.php?client=";
+	path.Append( RaspiHasOnlyWLAN() ? "A":"B");
+	
+	if ( m_sktxSession == 0){
+		path.Append( "&session=new" );
+		m_sktxSession = 1;
+	}
 	CString Number; 
 	Number.Format ("%02X", m_sktxKey);
+	path.Append( "&key=" );
 	path.Append( Number );
+		
 	m_sktxKey = 0;
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, path, pResponseBuffer, iFileLength))
+	//m_PlaygroundHttpHostPort
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxReponseLength))
 	{
-		if ( iFileLength > 0 )
-			pResponseBuffer[iFileLength-1] = '\0';
-		m_sktxScreenContent = pResponseBuffer;
+		if ( m_sktxReponseLength > 0 )
+		{
+			pResponseBuffer[m_sktxReponseLength-1] = '\0';
+			m_sktxReponseType = pResponseBuffer[0];
+			m_sktxScreenContent = (unsigned char * ) pResponseBuffer;
+			m_sktxScreenPosition = 1;
+		}
 		pResponseBuffer = 0;
-		//logger->Write( "updateNetworkMessageOfTheDay", LogNotice, "HTTP Document content: '%s'", pResponseBuffer);
+		//logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document content: '%s'", m_sktxScreenContent);
+		logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document m_sktxReponseLength: %i", m_sktxReponseLength);
+		
 	}
 	else
 	{
-		m_sktxScreenContent = (char *) msgNotFound;
+		m_sktxScreenContent = (unsigned char *) msgNotFound;
 	}
 }
 
+boolean CSidekickNet::IsSktxScreenContentEndReached()
+{
+	return m_sktxScreenPosition >= m_sktxReponseLength;
+}
 
-boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead)
+boolean CSidekickNet::IsSktxScreenToBeCleared()
+{
+	return m_sktxReponseType == 0;
+}
+
+boolean CSidekickNet::IsSktxScreenUnchanged()
+{
+	return m_sktxReponseType == 2;
+}
+
+void CSidekickNet::ResetSktxScreenContentChunks(){
+	m_sktxScreenPosition = 1;
+}
+
+unsigned char * CSidekickNet::GetSktxScreenContentChunk( u16 & startPos, u8 &color )
+{
+	if ( m_sktxScreenPosition >= m_sktxReponseLength ){
+		//logger->Write( "GetSktxScreenContentChunk", LogNotice, "End reached.");
+		startPos = 0;
+		color = 0;
+		m_sktxScreenPosition = 1;
+		return (unsigned char *) '\0';
+	}
+	u8 type      = m_sktxScreenContent[ m_sktxScreenPosition ];
+	u8 scrLength = m_sktxScreenContent[ m_sktxScreenPosition + 1]; // max255
+	u8 byteLength= 0;
+	u8 startPosL = m_sktxScreenContent[ m_sktxScreenPosition + 2 ];//screen pos x/y
+	u8 startPosM = m_sktxScreenContent[ m_sktxScreenPosition + 3 ];//screen pos x/y
+	color        = m_sktxScreenContent[ m_sktxScreenPosition + 4 ];//0-15, here we have some bits
+	
+	if ( type == 0)
+	 	byteLength = scrLength;
+	if ( type == 1) //repeat one character for scrLength times
+	 	byteLength = 1;
+	
+	startPos = startPosM * 255 + startPosL;//screen pos x/y
+	//logger->Write( "GetSktxScreenContentChunk", LogNotice, "Chunk parsed: length=%u, startPos=%u, color=%u ",length, startPos, color);
+	if ( type == 0)
+		memcpy( m_sktxScreenContentChunk, &m_sktxScreenContent[ m_sktxScreenPosition + 5], byteLength);
+	if ( type == 1)
+	{
+		char fillChar = m_sktxScreenContent[ m_sktxScreenPosition + 5 ];
+		for (unsigned i = 0; i < scrLength; i++)
+			m_sktxScreenContentChunk[i] = fillChar;
+	}
+	m_sktxScreenContentChunk[scrLength] = '\0';
+	m_sktxScreenPosition += 5+byteLength;//begin of next chunk
+	
+  return m_sktxScreenContentChunk;
+}
+
+boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead)
 {
 	//This method is derived from the webclient example of circle.
 	assert (m_isActive);
@@ -561,9 +661,9 @@ boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, c
 	CString IPString;
 	ip.Format (&IPString);
 	logger->Write( "GetHTTPResponseBody", LogNotice, 
-		"HTTP GET to http://%s%s (%s)", pHost, pFile, (const char *) IPString);
+		"HTTP GET to http://%s:%i%s (%s)", pHost, port, pFile, (const char *) IPString);
 	unsigned nLength = nDocMaxSize;
-	CHTTPClient Client (&m_Net, ip, HTTP_PORT, pHost);
+	CHTTPClient Client (&m_Net, ip, port, pHost);
 	THTTPStatus Status = Client.Get (pFile, (u8 *) pBuffer, &nLength);
 	if (Status != HTTPOK)
 	{

@@ -50,6 +50,7 @@ extern void applySIDSettings();
 extern void settingsGetGEORAMInfo( char *filename, u32 *size );
 extern void setErrorMsg( char * msg );
 extern void renderErrorMsg();
+extern void clearErrorMsg();
 
 
 

@@ -37,6 +37,7 @@
 #include <circle/machineinfo.h>
 #include <circle/sched/scheduler.h>
 #include <circle/usb/usbhcidevice.h>
+#include <circle/util.h>
 #include <SDCard/emmc.h>
 
 #ifdef WITH_WLAN
@@ -64,7 +65,7 @@ public:
 	boolean Initialize ( void );
 	boolean IsRunning ( void );
 	boolean CheckForSidekickKernelUpdate ();
-	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, const char * pFile, char *pBuffer, unsigned & nLengthRead);
+	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
 	void updateNetworkMessageOfTheDay();
 	void updateSktxScreenContent();
@@ -79,12 +80,17 @@ public:
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 	boolean isWireless(){ return m_useWLAN;};
 	boolean RaspiHasOnlyWLAN();
+	boolean IsSktxScreenContentEndReached();
+	boolean IsSktxScreenToBeCleared();
+	boolean IsSktxScreenUnchanged();
   char * getNetworkActionStatusMessage();
 	char * getNetworkMessageOfTheDay();
-	char * getSktxScreenContent(){ return m_sktxScreenContent; };
+  unsigned char * getSktxScreenContent(){ return m_sktxScreenContent; };
+	unsigned char * GetSktxScreenContentChunk( u16 & startPos, u8 &color );
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
 	CString getRaspiModelName();
+	void ResetSktxScreenContentChunks();
 
 private:
 	
@@ -100,15 +106,15 @@ private:
 #ifdef WITH_WLAN
 	CEMMCDevice		    m_EMMC;
 	CBcm4343Device    m_WLAN;
+	FATFS             m_FileSystem;
 #endif
 	CNetSubSystem     m_Net;
-	CDNSClient        m_DNSClient;
 	CIPAddress        m_DevHttpServerIP;
 	CIPAddress        m_PlaygroundHttpServerIP;
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
-	FATFS             m_FileSystem;
 #endif
+  CDNSClient        m_DNSClient;
 
 	boolean m_useWLAN;
 	boolean m_isActive;
@@ -119,15 +125,22 @@ private:
 	boolean m_isSktxKeypressQueued;
 	char * m_devServerMessage;
 	char * m_networkActionStatusMsg;
-	char * m_sktxScreenContent;
+	unsigned char * m_sktxScreenContent;
+	unsigned char m_sktxScreenContentChunk[2048];
   TMachineModel m_PiModel;
 	const char * m_DevHttpHost;
+	int m_DevHttpHostPort;
 	const char * m_PlaygroundHttpHost;
+	int m_PlaygroundHttpHostPort;
 	unsigned m_SidekickKernelUpdatePath;
 	unsigned m_queueDelay;
 	unsigned m_effortsSinceLastEvent;
 	unsigned m_skipSktxRefresh;
-	int m_sktxKey;
+	unsigned m_sktxScreenPosition;
+	unsigned m_sktxReponseLength;
+	unsigned m_sktxReponseType;
+	unsigned m_sktxKey;
+	unsigned m_sktxSession;
 };
 
 #endif
