@@ -312,7 +312,7 @@ void CSidekickNet::queueSktxKeypress( int key )
 void CSidekickNet::queueSktxRefresh()
 {
 	m_skipSktxRefresh++;
-	if ( m_skipSktxRefresh > 1 )
+	if ( m_skipSktxRefresh > 4 )
 	{
 		m_skipSktxRefresh = 0;
 		queueSktxKeypress( 92 );
@@ -641,7 +641,7 @@ unsigned char * CSidekickNet::GetSktxScreenContentChunk( u16 & startPos, u8 &col
 	//logger->Write( "GetSktxScreenContentChunk", LogNotice, "Chunk parsed: length=%u, startPos=%u, color=%u ",length, startPos, color);
 	if ( type == 0)
 		memcpy( m_sktxScreenContentChunk, &m_sktxScreenContent[ m_sktxScreenPosition + 5], byteLength);
-	if ( type == 1)
+	if ( type == 1) //repeat single char
 	{
 		char fillChar = m_sktxScreenContent[ m_sktxScreenPosition + 5 ];
 		for (unsigned i = 0; i < scrLength; i++)
