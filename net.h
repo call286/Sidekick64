@@ -67,11 +67,11 @@ public:
 	boolean CheckForSidekickKernelUpdate ();
 	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
-	void updateNetworkMessageOfTheDay();
+	void updateFrame();
 	void updateSktxScreenContent();
 	void queueNetworkInit();
 	void queueKernelUpdate();
-	void queueNetworkMessageOfTheDay();
+	void queueFrameRequest();
 	void queueSktxKeypress( int );
 	void queueSktxRefresh();
 	void handleQueuedNetworkAction();
@@ -84,8 +84,7 @@ public:
 	boolean IsSktxScreenToBeCleared();
 	boolean IsSktxScreenUnchanged();
   char * getNetworkActionStatusMessage();
-	char * getNetworkMessageOfTheDay();
-  unsigned char * getSktxScreenContent(){ return m_sktxScreenContent; };
+	unsigned char * getSktxScreenContent(){ return m_sktxScreenContent; };
 	unsigned char * GetSktxScreenContentChunk( u16 & startPos, u8 &color );
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
@@ -121,9 +120,9 @@ private:
 	boolean m_isPrepared;
 	boolean m_isNetworkInitQueued;
 	boolean m_isKernelUpdateQueued;
-	boolean m_isNMOTDQueued;
+	boolean m_isFrameQueued;
 	boolean m_isSktxKeypressQueued;
-	char * m_devServerMessage;
+	unsigned char m_devServerMessage[32000];
 	char * m_networkActionStatusMsg;
 	unsigned char * m_sktxScreenContent;
 	unsigned char m_sktxScreenContentChunk[2048];
@@ -141,6 +140,7 @@ private:
 	unsigned m_sktxReponseType;
 	unsigned m_sktxKey;
 	unsigned m_sktxSession;
+	unsigned m_videoFrameCounter;
 };
 
 #endif

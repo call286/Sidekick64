@@ -31,6 +31,13 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//temporary hack
+#ifdef WITH_RENDER
+  extern unsigned char logo_bg_raw[32000];
+#else
+  unsigned char logo_bg_raw[32000];
+#endif
+
 #include "net.h"
 #include "helpers.h"
 #include "c64screen.h"
@@ -52,7 +59,6 @@ static const char KERNEL_SAVE_LOCATION[] = "SD:kernel8.img";
 static const char RPIMENU64_SAVE_LOCATION[] = "SD:C64/rpimenu.prg";
 static const char msgNoConnection[] = "Sorry, no network connection!";
 static const char msgNotFound[]     = "Message not found. :(";
-static const char NMOTDfile[]       = "/not_there.php";
 static const char * prgUpdatePath[2] = { "/sidekick64/rpimenu.prg", "/sidekick264/rpimenu.prg"};
 
 #ifdef WITH_WLAN
@@ -80,8 +86,9 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isPrepared( false ),
 		m_isNetworkInitQueued( false ),
 		m_isKernelUpdateQueued( false ),
-		m_isNMOTDQueued( false ),
-		m_devServerMessage( (char *) "Press M to see another message here." ),
+		m_isFrameQueued( false ),
+		m_isSktxKeypressQueued( false ),
+		//m_devServerMessage( (char *) "Press M to see another message here." ),
 		m_networkActionStatusMsg( (char * ) ""),
 		m_sktxScreenContent( (unsigned char * ) ""),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
@@ -97,7 +104,8 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_sktxReponseLength(0),
 		m_sktxReponseType(0),
 		m_sktxKey(0),
-		m_sktxSession(0)
+		m_sktxSession(0),
+		m_videoFrameCounter(1)
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
@@ -189,7 +197,7 @@ boolean CSidekickNet::Initialize()
 			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
 	}
 		
-	clearErrorMsg(); //on c64screen
+	// clearErrorMsg(); //on c64screen
 	return true;
 }
 
@@ -295,11 +303,10 @@ void CSidekickNet::queueKernelUpdate()
 }
 
 
-void CSidekickNet::queueNetworkMessageOfTheDay()
+void CSidekickNet::queueFrameRequest()
 {
- 	m_isNMOTDQueued = true;
-	m_networkActionStatusMsg = (char*) "Trying to get NMOTD. Please wait.";
-	m_queueDelay = 1;
+ 	m_isFrameQueued = true;
+	m_queueDelay = 0;
 }
 
 void CSidekickNet::queueSktxKeypress( int key )
@@ -328,9 +335,9 @@ void CSidekickNet::handleQueuedNetworkAction()
 		m_effortsSinceLastEvent++;
 		if ( m_effortsSinceLastEvent > 200)
 		{
-			//as a WLAN keep-alive, auto queue a network event / HTTP request
+			//as a WLAN keep-alive, auto queue a network event
 			//to avoid WLAN going into "zombie" disconnected mode
-			m_isNMOTDQueued = true;
+			UpdateTime(); //TODO: use something better here
 			m_effortsSinceLastEvent = 0;
 		}
 	}
@@ -342,13 +349,6 @@ void CSidekickNet::handleQueuedNetworkAction()
 		return;
 	}
 
-	/*
-	if ( 	m_networkActionStatusMsg != (char *) "")
-	{
-		m_networkActionStatusMsg = (char *) "";
-		return;
-	}
-*/
 	if ( m_isNetworkInitQueued && !m_isActive )
 	{
 		assert (!m_isActive);
@@ -369,14 +369,14 @@ void CSidekickNet::handleQueuedNetworkAction()
 			m_isKernelUpdateQueued = false;
 			m_effortsSinceLastEvent = 0;
  		}
-/*		
-		else if (m_isNMOTDQueued)
+		
+		else if (m_isFrameQueued)
 		{
-			updateNetworkMessageOfTheDay();
-			m_isNMOTDQueued = false;
+			updateFrame();
+			m_isFrameQueued = false;
 			m_effortsSinceLastEvent = 0;
 		}
-*/		
+		
 		else if (m_isSktxKeypressQueued)
 		{
 			updateSktxScreenContent();
@@ -388,7 +388,7 @@ void CSidekickNet::handleQueuedNetworkAction()
 
 boolean CSidekickNet::isAnyNetworkActionQueued()
 {
-	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isNMOTDQueued || m_isSktxKeypressQueued;
+	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isFrameQueued || m_isSktxKeypressQueued;
 }
 
 char * CSidekickNet::getNetworkActionStatusMessage()
@@ -419,10 +419,6 @@ CString CSidekickNet::getRaspiModelName()
 CNetConfig * CSidekickNet::GetNetConfig(){
 	assert (m_isActive);
 	return m_Net.GetConfig ();
-}
-
-char * CSidekickNet::getNetworkMessageOfTheDay(){
-	return m_devServerMessage;
 }
 
 CIPAddress CSidekickNet::getIPForHost( const char * host )
@@ -522,34 +518,25 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	return true;
 }
 
-
-void CSidekickNet::updateNetworkMessageOfTheDay(){
+//for kernel render example
+void CSidekickNet::updateFrame(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{
-		m_devServerMessage = (char *) msgNoConnection; //FIXME: there's a memory leak in here
 		return;
 	}
 	unsigned iFileLength = 0;
-	char * pResponseBuffer = new char[301];	// +1 for 0-termination
-	if (pResponseBuffer == 0)
-	{
-		logger->Write( "updateNetworkMessageOfTheDay", LogError, "Cannot allocate document buffer");
-		return;
-	}
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, NMOTDfile, pResponseBuffer, iFileLength))
-	{
-		if ( iFileLength > 0 )
-			pResponseBuffer[iFileLength-1] = '\0';
-		m_devServerMessage = pResponseBuffer;
-		pResponseBuffer = 0;
-		//logger->Write( "updateNetworkMessageOfTheDay", LogNotice, "HTTP Document content: '%s'", pResponseBuffer);
-	}
-	else
-	{
-		m_devServerMessage = (char *) msgNotFound;
-	}
+	if (m_videoFrameCounter < 1) m_videoFrameCounter = 1;
+	
+  CString path = "/videotest.php?frame=";
+	CString Number; 
+	Number.Format ("%05d", m_videoFrameCounter);
+	path.Append( Number );
+	path.Append( ".bin" );
+		
+	GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, (char*) logo_bg_raw, iFileLength);
+	m_videoFrameCounter++;
+	if (m_videoFrameCounter > 1500) m_videoFrameCounter = 1;
 }
-
 
 void CSidekickNet::updateSktxScreenContent(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)

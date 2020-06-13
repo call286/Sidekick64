@@ -1034,10 +1034,6 @@ void printNetworkScreen()
 		printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+5, strDefGateway, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
-		
-		//printC64( x+1, y1+8, "Network >m<essage of the day", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-		//printC64( x+1, y1+9, pSidekickNet->getNetworkMessageOfTheDay(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-		
 	}
 	else{
 		printC64( x+1, y1+4, "Network connection is inactive", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
