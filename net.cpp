@@ -88,7 +88,6 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isKernelUpdateQueued( false ),
 		m_isFrameQueued( false ),
 		m_isSktxKeypressQueued( false ),
-		//m_devServerMessage( (char *) "Press M to see another message here." ),
 		m_networkActionStatusMsg( (char * ) ""),
 		m_sktxScreenContent( (unsigned char * ) ""),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
@@ -196,8 +195,10 @@ boolean CSidekickNet::Initialize()
 		else
 			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
 	}
-		
-	// clearErrorMsg(); //on c64screen
+	
+	#ifndef WITH_RENDER
+	 clearErrorMsg(); //on c64screen
+  #endif
 	return true;
 }
 
