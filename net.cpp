@@ -142,6 +142,12 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 	m_pTimer->SetTimeZone (nTimeZone);
 }
 
+void CSidekickNet::setErrorMsgC64( char * msg ){ 
+	#ifndef WITH_RENDER
+	setErrorMsg( msg ); 
+	#endif
+};
+
 void CSidekickNet::setSidekickKernelUpdatePath( unsigned type)
 {
 	m_SidekickKernelUpdatePath = type;
@@ -179,6 +185,8 @@ boolean CSidekickNet::Initialize()
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
 			"Network connection is not running - is ethernet cable not attached?"
 		);
+		//                 "012345678901234567890123456789012345XXXX"
+		setErrorMsgC64((char*)"    Is the network cable plugged in?    ");
 		return false;
 	}
 
@@ -197,7 +205,7 @@ boolean CSidekickNet::Initialize()
 	}
 	
 	#ifndef WITH_RENDER
-	 clearErrorMsg(); //on c64screen
+	 clearErrorMsg(); //on c64screen, kernel menu
   #endif
 	return true;
 }
@@ -232,6 +240,8 @@ boolean CSidekickNet::Prepare()
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
 			"Your Raspberry Pi model (3A+) doesn't have an ethernet socket. Skipping init of CNetSubSystem."
 		);
+		//                 "012345678901234567890123456789012345XXXX"
+		setErrorMsgC64((char*)" No WLAN support in this kernel. Sorry. ");
 		return false;
 	}
 	
@@ -240,6 +250,7 @@ boolean CSidekickNet::Prepare()
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
 			"Couldn't initialize instance of CUSBHCIDevice."
 		);
+		setErrorMsgC64((char*)"Error on USB init. Sorry.");
 		return false;
 	}
 	if (m_useWLAN)
@@ -249,7 +260,7 @@ boolean CSidekickNet::Prepare()
 		{
 			logger->Write ("CSidekickNet::Initialize", LogError,
 					"Cannot mount drive: %s", DRIVE);
-
+			setErrorMsgC64((char*)"Can't mount SD card. Sorry.");
 			return false;
 		}
 		if (!m_WLAN.Initialize ())
@@ -267,6 +278,7 @@ boolean CSidekickNet::Prepare()
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
 			"Couldn't initialize instance of CNetSubSystem."
 		);
+		setErrorMsgC64((char*)"Can't initialize CNetSubSystem.");
 		return false;
 	}
 	if (m_useWLAN)
@@ -277,6 +289,7 @@ boolean CSidekickNet::Prepare()
 			logger->Write( "CSidekickNet::Initialize", LogNotice, 
 				"Couldn't initialize instance of CWPASupplicant."
 			);
+			setErrorMsgC64((char*)"Can't initialize WLAN/WPA. Sorry.");
 			return false;
 		}
 		#endif
@@ -292,14 +305,16 @@ boolean CSidekickNet::IsRunning ()
 void CSidekickNet::queueNetworkInit()
 { 
 	m_isNetworkInitQueued = true;
-	m_networkActionStatusMsg = (char*) "Trying to connect. Please wait.";
+	//                                 "012345678901234567890123456789012345XXXX"
+	m_networkActionStatusMsg = (char*) "    Trying to connect. Please wait.     ";
 	m_queueDelay = 1;
 }
 
 void CSidekickNet::queueKernelUpdate()
 { 
 	m_isKernelUpdateQueued = true; 
-	m_networkActionStatusMsg = (char*) "Trying to update kernel. Please wait.";
+	//                                 "012345678901234567890123456789012345XXXX"
+	m_networkActionStatusMsg = (char*) "  Trying to update kernel. Please wait. ";
 	m_queueDelay = 1;
 }
 
@@ -366,10 +381,13 @@ void CSidekickNet::handleQueuedNetworkAction()
 	{
 		if ( m_isKernelUpdateQueued )
 		{
-		 	CheckForSidekickKernelUpdate();
+			CheckForSidekickKernelUpdate();
 			m_isKernelUpdateQueued = false;
 			m_effortsSinceLastEvent = 0;
- 		}
+			#ifndef WITH_RENDER
+			clearErrorMsg(); //on c64screen, kernel menu
+			#endif
+	}
 		
 		else if (m_isFrameQueued)
 		{

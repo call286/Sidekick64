@@ -90,6 +90,7 @@ public:
 	CNetConfig * GetNetConfig();
 	CString getRaspiModelName();
 	void ResetSktxScreenContentChunks();
+	void setErrorMsgC64( char * msg );
 
 private:
 	
