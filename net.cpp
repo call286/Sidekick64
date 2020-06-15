@@ -557,6 +557,10 @@ void CSidekickNet::updateFrame(){
 	if (m_videoFrameCounter > 1500) m_videoFrameCounter = 1;
 }
 
+void CSidekickNet::resetSktxSession(){
+	m_sktxSession	= 0;
+}
+
 void CSidekickNet::updateSktxScreenContent(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{

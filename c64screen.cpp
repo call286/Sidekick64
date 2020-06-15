@@ -727,6 +727,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 	{
 		if ( k == 136 /* F7 */ || k == 139 /* F6 */)
 		{
+			pSidekickNet->resetSktxSession();
 			menuScreen = MENU_MAIN;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			return;

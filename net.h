@@ -91,6 +91,7 @@ public:
 	CString getRaspiModelName();
 	void ResetSktxScreenContentChunks();
 	void setErrorMsgC64( char * msg );
+	void resetSktxSession();
 
 private:
 	
