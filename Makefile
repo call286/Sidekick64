@@ -4,7 +4,7 @@
 EXTRACLEAN = OLED/*.o resid/*.o
 
 CIRCLEHOME = ../..
-OBJS = lowlevel_arm64.o gpio_defs.o helpers.o latch.o oled.o ./OLED/ssd1306xled.o ./OLED/ssd1306xled8x16.o ./OLED/num2str.o 
+OBJS = lowlevel_arm64.o gpio_defs.o helpers.o latch.o oled.o ./OLED/ssd1306xled.o ./OLED/num2str.o ./OLED/ssd1306xledtx.o ./OLED/ssd1306xledfx.o
 
 ### MENU C64 ###
 ifeq ($(kernel), menu)

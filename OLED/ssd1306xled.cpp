@@ -1,14 +1,13 @@
 /**
- * SSD1306xLED - Drivers for SSD1306 controlled dot matrix OLED/PLED 128x64 displays
+ * SSD1306xLED - Library for the SSD1306 based OLED/PLED 128x64 displays
  *
- * @created: 2014-08-12
- * @author: Neven Boyanov
+ * @author Neven Boyanov
  *
  * This is part of the Tinusaur/SSD1306xLED project.
  *
- * Copyright (c) 2016 Neven Boyanov, Tinusaur Team. All Rights Reserved.
+ * Copyright (c) 2018 Neven Boyanov, The Tinusaur Team. All Rights Reserved.
  * Distributed as open source software under MIT License, see LICENSE.txt file.
- * Please, as a favor, retain the link http://tinusaur.org to The Tinusaur Project.
+ * Retain in your source code the link http://tinusaur.org to the Tinusaur project.
  *
  * Source code available at: https://bitbucket.org/tinusaur/ssd1306xled
  *
@@ -17,6 +16,11 @@
 
  */
 
+// ============================================================================
+// ACKNOWLEDGEMENTS:
+// - Some code and ideas initially based on "IIC_wtihout_ACK" 
+//   by http://www.14blog.com/archives/1358 (defunct)
+// - Init sequence used info from Adafruit_SSD1306.cpp init code.
 // ============================================================================
 
 #include <stdlib.h>
@@ -29,7 +33,6 @@
 #include "../latch.h"
 
 // ----------------------------------------------------------------------------
-
 
 // Convenience definitions for PORTB
 
@@ -53,70 +56,114 @@ void DIGITAL_WRITE_LOW( u32 PORT )
 	lastSDA = 0;
 }
 
+void ssd1306_start_command(void);	// Initiate transmission of command
+void ssd1306_start_data(void);	// Initiate transmission of data
+void ssd1306_data_byte(uint8_t);	// Transmission 1 byte of data
+void ssd1306_stop(void);	// Finish transmission
+
 // ----------------------------------------------------------------------------
 
-// Some code based on "IIC_wtihout_ACK" by http://www.14blog.com/archives/1358
-
 const uint8_t ssd1306_init_sequence [] PROGMEM = {	// Initialization Sequence
+
+	0xAE,			// Set Display ON/OFF - AE=OFF, AF=ON
+	0xD5, 0xF0,		// Set display clock divide ratio/oscillator frequency, set divide ratio
+	0xA8, 0x3F,		// Set multiplex ratio (1 to 64) ... (height - 1)
+	0xD3, 0x00,		// Set display offset. 00 = no offset
+	0x40 | 0x00,	// Set start line address, at 0.
+	0x8D, 0x14,		// Charge Pump Setting, 14h = Enable Charge Pump
+	0x20, 0x00,		// Set Memory Addressing Mode - 00=Horizontal, 01=Vertical, 10=Page, 11=Invalid
+	0xA0 | 0x01,	// Set Segment Re-map
+	0xC8,			// Set COM Output Scan Direction
+	0xDA, 0x12,		// Set COM Pins Hardware Configuration - 128x32:0x02, 128x64:0x12
+	0x81, 0x3F,		// Set contrast control register
+	0xD9, 0x22,		// Set pre-charge period (0x22 or 0xF1)
+	0xDB, 0x20,		// Set Vcomh Deselect Level - 0x00: 0.65 x VCC, 0x20: 0.77 x VCC (RESET), 0x30: 0.83 x VCC
+	0xA4,			// Entire Display ON (resume) - output RAM to display
+	0xA6,			// Set Normal/Inverse Display mode. A6=Normal; A7=Inverse
+	0x2E,			// Deactivate Scroll command
+	0xAF,			// Set Display ON/OFF - AE=OFF, AF=ON
+	//
+	0x22, 0x00, 0x3f,	// Set Page Address (start,end)
+	0x21, 0x00,	0x7f,	// Set Column Address (start,end)
+	//
+	// 0xD6, 0x01,		// Set Zoom In, 0=disabled, 1=enabled
+/*
 	0xAE,			// Display OFF (sleep mode)
-	0x20, 0b00,		// Set Memory Addressing Mode
-					// 00=Horizontal Addressing Mode; 01=Vertical Addressing Mode;
-					// 10=Page Addressing Mode (RESET); 11=Invalid
+	0x20, 0x00,		// Set Memory Addressing Mode - 00=Horizontal, 01=Vertical, , 10=Page, 11=Invalid
 	0xB0,			// Set Page Start Address for Page Addressing Mode, 0-7
 	0xC8,			// Set COM Output Scan Direction
 	0x00,			// ---set low column address
 	0x10,			// ---set high column address
 	0x40,			// --set start line address
 	0x81, 0x3F,		// Set contrast control register
-	0xA1,			// Set Segment Re-map. A0=address mapped; A1=address 127 mapped. 
+	0xA1,			// Set Segment Re-map. A0=address mapped; A1=address 127 mapped.
 	0xA6,			// Set display mode. A6=Normal; A7=Inverse
 	0xA8, 0x3F,		// Set multiplex ratio(1 to 64)
-	0xA4,			// Output RAM to Display
-					// 0xA4=Output follows RAM content; 0xA5,Output ignores RAM content
+	0xA4,			// Output RAM to Display - 0xA4=Output follows RAM content; 0xA5,Output ignores RAM content
 	0xD3, 0x00,		// Set display offset. 00 = no offset
-	0xD5,			// --set display clock divide ratio/oscillator frequency
-	0xF0,			// --set divide ratio
+	0xD5, 0xF0,		// --set display clock divide ratio/oscillator frequency
 	0xD9, 0x22,		// Set pre-charge period
-	0xDA, 0x12,		// Set com pins hardware configuration		
-	0xDB,			// --set vcomh
-	//0x00,			// 0x20,0.65xVcc
-	//0x30,			// 0x20,0.83xVcc
-	0x20,			// 0x20,0.77xVcc
-	0x8D, 0x14,		// Set DC-DC enable
-	0xAF			// Display ON in normal mode
-	
+	0xDA, 0x12,		// Set com pins hardware configuration
+	0xDB, 0x20,		// --set vcomh, 0x20,0.77xVcc
+	0x8D, 0x14,		// Charge Pump Setting, 14h = Enable Charge Pump
+	0xAF,			// Display ON in normal mode
+*/
 };
+
+// ============================================================================
+
+// NOTE: These functions are separate sub-library for handling I2C simplified output.
+// NAME: I2CSW - I2C Simple Writer.
+// Convenience definitions for manipulating PORTB pins
+// NOTE: These definitions are used only internally by the I2CSW library
+#define I2CSW_HIGH(PORT) PORTB |= (1 << PORT)
+#define I2CSW_LOW(PORT) PORTB &= ~(1 << PORT)
 
 // ----------------------------------------------------------------------------
 
-// These function should become separate library for handling I2C simplified output.
+void i2csw_start(void);
+void i2csw_stop(void);
+void i2csw_byte(uint8_t byte);
 
-void ssd1306_xfer_start(void)
-{
+// ----------------------------------------------------------------------------
+
+void i2csw_start(void) {
+/*
+	DDRB |= (1 << SSD1306_SDA);	// Set port as output
+	DDRB |= (1 << SSD1306_SCL);	// Set port as output
+	I2CSW_HIGH(SSD1306_SCL);	// Set to HIGH
+	I2CSW_HIGH(SSD1306_SDA);	// Set to HIGH
+	I2CSW_LOW(SSD1306_SDA);		// Set to LOW
+	I2CSW_LOW(SSD1306_SCL);		// Set to LOW
+*/
 	DIGITAL_WRITE_HIGH(SSD1306_SCL);	// Set to HIGH
 	DIGITAL_WRITE_HIGH(SSD1306_SDA);	// Set to HIGH
 	DIGITAL_WRITE_LOW(SSD1306_SDA);		// Set to LOW
 	DIGITAL_WRITE_LOW(SSD1306_SCL);		// Set to LOW
 }
 
-void ssd1306_xfer_stop(void)
-{
+void i2csw_stop(void) {
+/*
+	I2CSW_LOW(SSD1306_SCL);		// Set to LOW
+	I2CSW_LOW(SSD1306_SDA);		// Set to LOW
+	I2CSW_HIGH(SSD1306_SCL);	// Set to HIGH
+	I2CSW_HIGH(SSD1306_SDA);	// Set to HIGH
+	DDRB &= ~(1 << SSD1306_SDA);// Set port as input
+*/
 	DIGITAL_WRITE_LOW(SSD1306_SCL);		// Set to LOW
 	DIGITAL_WRITE_LOW(SSD1306_SDA);		// Set to LOW
 	DIGITAL_WRITE_HIGH(SSD1306_SCL);	// Set to HIGH
 	DIGITAL_WRITE_HIGH(SSD1306_SDA);	// Set to HIGH
 }
 
-void ssd1306_send_byte(uint8_t byte)
-{
+void ssd1306_send_byte(uint8_t byte) {
+
 	uint8_t i;
-	for (i = 0; i < 8; i++)
-	{
+	for (i = 0; i < 8; i++) {
 		if ((byte << i) & 0x80)
 			DIGITAL_WRITE_HIGH(SSD1306_SDA);
 		else
 			DIGITAL_WRITE_LOW(SSD1306_SDA);
-		
 		DIGITAL_WRITE_HIGH(SSD1306_SCL);
 		DIGITAL_WRITE_LOW(SSD1306_SCL);
 	}
@@ -125,144 +172,80 @@ void ssd1306_send_byte(uint8_t byte)
 	DIGITAL_WRITE_LOW(SSD1306_SCL);
 }
 
-void ssd1306_send_command_start(void) {
-	ssd1306_xfer_start();
-	ssd1306_send_byte(SSD1306_SA);  // Slave address, SA0=0
-	ssd1306_send_byte(0x00);	// write command
+void i2csw_byte(uint8_t byte) {
+	ssd1306_send_byte(byte);
 }
 
-void ssd1306_send_command_stop(void) {
-	ssd1306_xfer_stop();
-}
-
+// ============================================================================
 void ssd1306_send_command(uint8_t command)
 {
-	ssd1306_send_command_start();
+	ssd1306_start_command();
 	ssd1306_send_byte(command);
-	ssd1306_send_command_stop();
+	i2csw_stop();
 }
 
-void ssd1306_send_data_start(void)
-{
-	ssd1306_xfer_start();
-	ssd1306_send_byte(SSD1306_SA);
-	ssd1306_send_byte(0x40);	//write data
+
+
+void ssd1306_start_command(void) {
+	i2csw_start();
+	i2csw_byte(SSD1306_SADDR);	// Slave address: R/W(SA0)=0 - write
+	i2csw_byte(0x00);			// Control byte: D/C=0 - write command
 }
 
-void ssd1306_send_data_stop(void)
-{
-	ssd1306_xfer_stop();
+void ssd1306_send_data_start(void) {
+	i2csw_start();
+	i2csw_byte(SSD1306_SADDR);	// Slave address, R/W(SA0)=0 - write
+	i2csw_byte(0x40);			// Control byte: D/C=1 - write data
 }
 
-/*
-void ssd1306_send_data(uint8_t byte)
-{
+void ssd1306_start_data(void) {
 	ssd1306_send_data_start();
-	ssd1306_send_byte(byte);
+}
+
+
+void ssd1306_data_byte(uint8_t b) {
+	i2csw_byte(b);
+}
+
+void ssd1306_send_data_stop(void) {
+	i2csw_stop();
+}
+
+void ssd1306_stop(void) {
 	ssd1306_send_data_stop();
 }
-*/
 
-// ----------------------------------------------------------------------------
+// ============================================================================
 
-
-void ssd1306_init(void)
-{
-	//DDRB |= (1 << SSD1306_SDA);	// Set port as output
-	//DDRB |= (1 << SSD1306_SCL);	// Set port as output
-	
-	ssd1306_send_command_start();
+void ssd1306_init(void) {
+	ssd1306_start_command();	// Initiate transmission of command
 	for (uint8_t i = 0; i < sizeof (ssd1306_init_sequence); i++) {
-		//ssd1306_send_command(ssd1306_init_sequence[i]);
-		ssd1306_send_byte(ssd1306_init_sequence[i]);
-
+		//ssd1306_data_byte(pgm_read_byte(&ssd1306_init_sequence[i]));	// Send the command out
+		ssd1306_data_byte(ssd1306_init_sequence[i]);
 		flushI2CBuffer();
 	}
-	ssd1306_send_command_stop();
-		flushI2CBuffer();
+	ssd1306_stop();	// Finish transmission
+	flushI2CBuffer();
 }
 
-
-void ssd1306_setpos(uint8_t x, uint8_t y)
-{
-	ssd1306_send_command_start();
-	ssd1306_send_byte(0xb0 + y);
-	ssd1306_send_byte(((x & 0xf0) >> 4) | 0x10); // | 0x10
-/* TODO: Verify correctness */	ssd1306_send_byte((x & 0x0f)); // | 0x01
-	ssd1306_send_command_stop();
+void ssd1306_setpos(uint8_t x, uint8_t y) {
+	ssd1306_start_command();
+	ssd1306_data_byte(0xb0 | (y & 0x07));	// Set page start address
+	ssd1306_data_byte(x & 0x0f);			// Set the lower nibble of the column start address
+	ssd1306_data_byte(0x10 | (x >> 4));		// Set the higher nibble of the column start address
+	ssd1306_stop();	// Finish transmission
 }
 
 void ssd1306_fill4(uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4) {
 	ssd1306_setpos(0, 0);
-	ssd1306_send_data_start();
+	ssd1306_start_data();	// Initiate transmission of data
 	for (uint16_t i = 0; i < 128 * 8 / 4; i++) {
-		ssd1306_send_byte(p1);
-		ssd1306_send_byte(p2);
-		ssd1306_send_byte(p3);
-		ssd1306_send_byte(p4);
+		ssd1306_data_byte(p1);
+		ssd1306_data_byte(p2);
+		ssd1306_data_byte(p3);
+		ssd1306_data_byte(p4);
 	}
-	ssd1306_send_data_stop();
+	ssd1306_stop();	// Finish transmission
 }
-
-void ssd1306_fill2(uint8_t p1, uint8_t p2) {
-	ssd1306_fill4(p1, p2, p1, p2);
-}
-
-void ssd1306_fill(uint8_t p) {
-	ssd1306_fill4(p, p, p, p);
-}
-
-// ----------------------------------------------------------------------------
-
-void ssd1306_char_font6x8(char ch) {
-	uint8_t c = ch - 32;
-	ssd1306_send_data_start();
-	for (uint8_t i = 0; i < 6; i++)
-	{
-		ssd1306_send_byte(ssd1306xled_font6x8[c * 6 + i]);
-	}
-	ssd1306_send_data_stop();
-}
-
-void ssd1306_string_font6x8(char *s) {
-	while (*s) {
-		ssd1306_char_font6x8(*s++);
-	}
-}
-
-char ssd1306_numdec_buffer[USINT2DECASCII_MAX_DIGITS + 1];
-
-void ssd1306_numdec_font6x8(uint16_t num) {
-	ssd1306_numdec_buffer[USINT2DECASCII_MAX_DIGITS] = '\0';   // Terminate the string.
-	uint8_t digits = usint2decascii(num, ssd1306_numdec_buffer);
-	ssd1306_string_font6x8(ssd1306_numdec_buffer + digits);
-}
-
-void ssd1306_numdecp_font6x8(uint16_t num) {
-	ssd1306_numdec_buffer[USINT2DECASCII_MAX_DIGITS] = '\0';   // Terminate the string.
-	usint2decascii(num, ssd1306_numdec_buffer);
-	ssd1306_string_font6x8(ssd1306_numdec_buffer);
-}
-
-// ----------------------------------------------------------------------------
-
-void ssd1306_draw_bmp(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, const uint8_t bitmap[])
-{
-	uint16_t j = 0;
-	uint8_t y;
-	if (y1 % 8 == 0) y = y1 / 8;
-	else y = y1 / 8 + 1;
-	for (y = y0; y < y1; y++)
-	{
-		ssd1306_setpos(x0,y);
-		ssd1306_send_data_start();
-		for (uint8_t x = x0; x < x1; x++)
-		{
-			ssd1306_send_byte(bitmap[j++]);
-		}
-		ssd1306_send_data_stop();
-	}
-}
-
 
 // ============================================================================
