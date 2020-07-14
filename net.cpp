@@ -92,7 +92,6 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_pTimer (pTimer),
 		m_EMMC ( *pEmmcDevice),
 #ifdef WITH_WLAN		
-		m_EMMC ( *pEmmcDevice),
 		m_WLAN (FIRMWARE_PATH),
 		m_Net (0, 0, 0, 0, DEFAULT_HOSTNAME, NetDeviceTypeWLAN),
 		m_WPASupplicant (CONFIG_FILE),
