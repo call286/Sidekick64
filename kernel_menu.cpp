@@ -342,6 +342,15 @@ void CKernelMenu::Run( void )
 
 		asm volatile ("wfi");
 
+		#ifdef WITH_NET
+		if ( m_SidekickNet.isCSDBDownloadReady()){
+			launchKernel = 40; 
+			size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024;
+			logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i KB", freeSpace);
+			lastChar = 0xfffffff;
+		}
+		#endif
+		
 		if ( launchKernel )
 		{
 			m_InputPin.DisableInterrupt();

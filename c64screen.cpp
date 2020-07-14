@@ -698,26 +698,30 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 		}
 		if ( k == 'x' || k == 'X')
 		{
-			menuScreen = MENU_SKTX;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
-			return;
+			if (pSidekickNet->IsRunning())
+			{
+				pSidekickNet->redrawSktxScreen();
+				menuScreen = MENU_SKTX;
+				handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+				return;
+			}
 		}
 		else if ( k == 'c' || k == 'C')
 		{
-			pSidekickNet->queueNetworkInit();
-			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
+			if (!pSidekickNet->IsRunning())
+			{
+				pSidekickNet->queueNetworkInit();
+				setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
+			}
 		}
 		else if ( k == 'u' || k == 'U')
 		{
-			pSidekickNet->queueKernelUpdate();
-			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
+			if (pSidekickNet->IsRunning())
+			{
+				pSidekickNet->queueKernelUpdate();
+				setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
+			}
 		}
-		/*
-		else if ( k == 'm' || k == 'M')
-		{
-			pSidekickNet->queueNetworkMessageOfTheDay();
-			setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
-		}*/
 		else if ( k == 'd' || k == 'D')
 		{
 				if ( errorMsg != NULL ) errorMsg = NULL;
@@ -725,12 +729,24 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal )
 	} else
 	if ( menuScreen == MENU_SKTX )
 	{
+	
 		if ( k == 136 /* F7 */ || k == 139 /* F6 */)
 		{
-			pSidekickNet->resetSktxSession();
 			menuScreen = MENU_MAIN;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
 			return;
+		}
+		/*
+		else if ( k == 'n' || k == 'N')
+		{
+			//only needed temporarily for testing purposes
+			pSidekickNet->resetSktxSession();
+		}*/
+		else if ( k == 'd' || k == 'D')
+		{
+				//http errors might be displayed on top of sktx screen
+				//this assignment is a cheap trick to get rid of error popups
+				if ( errorMsg != NULL ) errorMsg = NULL;
 		}
 		else if (k == 92 )
 		{
@@ -1035,6 +1051,7 @@ void printNetworkScreen()
 		printC64( x+1, y1+4, strDhcpUsed,   skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+5, strDefGateway, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 		printC64( x+1, y1+6, strDNSServer,  skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
+		printC64( x+1, y1+7, "Press >X< for CSDB launcher demo ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	}
 	else{
 		printC64( x+1, y1+4, "Network connection is inactive", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
@@ -1129,7 +1146,6 @@ void printSKTXScreen()
 	if ( skinFontLoaded )
 		injectPOKE( 53272, 28 ); else
 		injectPOKE( 53272, 21 ); 
-
 }
 	
 #endif

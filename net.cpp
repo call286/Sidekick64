@@ -31,19 +31,23 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//temporary hack
-#ifdef WITH_RENDER
-  extern unsigned char logo_bg_raw[32000];
-#else
-  unsigned char logo_bg_raw[32000];
-#endif
-
 #include "net.h"
 #include "helpers.h"
 #include "c64screen.h"
 
+#include <circle/net/dnsclient.h>
 #include <circle/net/ntpclient.h>
-#include <circle/net/httpclient.h>
+#include <circle-mbedtls/httpclient.h>
+
+#include <circle-mbedtls/tlssimpleclientsocket.h>
+#include <circle/net/in.h>
+#include <circle/types.h>
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <mbedtls/error.h>
+
 // Network configuration
 #ifndef WITH_WLAN
 #define USE_DHCP
@@ -52,14 +56,16 @@
 static const char NTPServer[]    = "pool.ntp.org";
 static const int nTimeZone       = 2*60;		// minutes diff to UTC
 static const char DRIVE[] = "SD:";
-//nDocMaxSize reserved 800 KB as the maximum size of the kernel file
-static const unsigned nDocMaxSize = 900*1024;
+//nDocMaxSize reserved 2 MB as the maximum size of the kernel file
+static const unsigned nDocMaxSize = 2000*1024;
 static const char KERNEL_IMG_NAME[] = "kernel8.img";
 static const char KERNEL_SAVE_LOCATION[] = "SD:kernel8.img";
 static const char RPIMENU64_SAVE_LOCATION[] = "SD:C64/rpimenu.prg";
 static const char msgNoConnection[] = "Sorry, no network connection!";
 static const char msgNotFound[]     = "Message not found. :(";
 static const char * prgUpdatePath[2] = { "/sidekick64/rpimenu.prg", "/sidekick264/rpimenu.prg"};
+
+static const char CSDB_HOST[] = "csdb.dk";
 
 #ifdef WITH_WLAN
 #define DRIVE		"SD:"
@@ -70,10 +76,21 @@ static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.wlan.img", "/si
 static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.img", "/sidekick264/kernel8.img"};
 #endif
 
+//temporary hack
+
+extern u32 prgSizeLaunch;
+extern unsigned char prgDataLaunch[ 65536 ];
+#ifdef WITH_RENDER
+  extern unsigned char logo_bg_raw[32000];
+#else
+  unsigned char logo_bg_raw[32000];
+#endif
+
 CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer, CScheduler * pScheduler, CEMMCDevice * pEmmcDevice  )
 		:m_USBHCI (pInterruptSystem, pTimer),
 		m_pScheduler(pScheduler),
 		m_pTimer (pTimer),
+		m_EMMC ( *pEmmcDevice),
 #ifdef WITH_WLAN		
 		m_EMMC ( *pEmmcDevice),
 		m_WLAN (FIRMWARE_PATH),
@@ -81,6 +98,7 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_WPASupplicant (CONFIG_FILE),
 #endif
 		m_DNSClient(&m_Net),
+		m_TLSSupport (&m_Net),
 		m_useWLAN (false),
 		m_isActive( false ),
 		m_isPrepared( false ),
@@ -88,8 +106,13 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isKernelUpdateQueued( false ),
 		m_isFrameQueued( false ),
 		m_isSktxKeypressQueued( false ),
+		m_isCSDBDownloadQueued( false ),
+		m_isCSDBDownloadReady( false ),
+		m_tryFilesystemRemount( false ),
 		m_networkActionStatusMsg( (char * ) ""),
 		m_sktxScreenContent( (unsigned char * ) ""),
+		m_sktxSessionID( (char * ) ""),
+		m_CSDBDownloadPath( (char * ) ""),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
 		m_DevHttpHostPort(0),
@@ -100,8 +123,8 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_effortsSinceLastEvent(0),
 		m_skipSktxRefresh(0),
 		m_sktxScreenPosition(0),
-		m_sktxReponseLength(0),
-		m_sktxReponseType(0),
+		m_sktxResponseLength(0),
+		m_sktxResponseType(0),
 		m_sktxKey(0),
 		m_sktxSession(0),
 		m_videoFrameCounter(1)
@@ -203,10 +226,21 @@ boolean CSidekickNet::Initialize()
 		else
 			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
 	}
-	
+	m_CSDBServerIP = getIPForHost( CSDB_HOST );
 	#ifndef WITH_RENDER
 	 clearErrorMsg(); //on c64screen, kernel menu
   #endif
+	return true;
+}
+
+boolean CSidekickNet::mountSDDrive()
+{
+	if (f_mount (&m_FileSystem, DRIVE, 1) != FR_OK)
+	{
+		logger->Write ("CSidekickNet::Initialize", LogError,
+				"Cannot mount drive: %s", DRIVE);
+		return false;
+	}
 	return true;
 }
 
@@ -253,16 +287,15 @@ boolean CSidekickNet::Prepare()
 		setErrorMsgC64((char*)"Error on USB init. Sorry.");
 		return false;
 	}
+	if (!mountSDDrive())
+	{
+		setErrorMsgC64((char*)"Can't mount SD card. Sorry.");
+		return false;
+	}	
+	CGlueStdioInit (m_FileSystem);
 	if (m_useWLAN)
 	{
 		#ifdef WITH_WLAN
-		if (f_mount (&m_FileSystem, DRIVE, 1) != FR_OK)
-		{
-			logger->Write ("CSidekickNet::Initialize", LogError,
-					"Cannot mount drive: %s", DRIVE);
-			setErrorMsgC64((char*)"Can't mount SD card. Sorry.");
-			return false;
-		}
 		if (!m_WLAN.Initialize ())
 		{
 			logger->Write( "CSidekickNet::Initialize", LogNotice, 
@@ -334,14 +367,24 @@ void CSidekickNet::queueSktxKeypress( int key )
 
 void CSidekickNet::queueSktxRefresh()
 {
+	//refesh when user didn't press a key
+	//this has to be quick for multiplayer games (value 4)
+	//and can be slow for csdb browsing (value 16)
 	m_skipSktxRefresh++;
-	if ( m_skipSktxRefresh > 4 )
+	if ( m_skipSktxRefresh > 16 )
 	{
 		m_skipSktxRefresh = 0;
 		queueSktxKeypress( 92 );
 	}
 }
 
+void CSidekickNet::queueCSDBDownload( char * filePath)
+{
+	m_isCSDBDownloadQueued = true;
+	m_queueDelay = 0;
+	m_CSDBDownloadPath = filePath;
+	//logger->Write( "queueCSDBDownload", LogNotice, "download path: >%s<", m_CSDBDownloadPath);
+}
 
 void CSidekickNet::handleQueuedNetworkAction()
 {
@@ -387,13 +430,21 @@ void CSidekickNet::handleQueuedNetworkAction()
 			#ifndef WITH_RENDER
 			clearErrorMsg(); //on c64screen, kernel menu
 			#endif
-	}
+		}
 		
 		else if (m_isFrameQueued)
 		{
 			updateFrame();
 			m_isFrameQueued = false;
 			m_effortsSinceLastEvent = 0;
+		}
+
+		else if (m_isCSDBDownloadQueued)
+		{
+			m_isCSDBDownloadQueued = false;
+			getCSDBBinaryContent( m_CSDBDownloadPath );
+			m_effortsSinceLastEvent = 0;
+			m_isSktxKeypressQueued = false;
 		}
 		
 		else if (m_isSktxKeypressQueued)
@@ -408,6 +459,17 @@ void CSidekickNet::handleQueuedNetworkAction()
 boolean CSidekickNet::isAnyNetworkActionQueued()
 {
 	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isFrameQueued || m_isSktxKeypressQueued;
+}
+
+boolean CSidekickNet::isCSDBDownloadReady()
+{
+	boolean bTemp = m_isCSDBDownloadReady;
+	if ( m_isCSDBDownloadReady){
+		m_isCSDBDownloadReady = false;
+		unmountSDDrive();
+		m_tryFilesystemRemount = true;
+	}
+	return bTemp;
 }
 
 char * CSidekickNet::getNetworkActionStatusMessage()
@@ -537,6 +599,40 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	return true;
 }
 
+void CSidekickNet::getCSDBContent( const char * fileName, const char * filePath){
+	assert (m_isActive);
+	unsigned iFileLength = 0;
+	char * pFileBuffer = new char[nDocMaxSize+1];	// +1 for 0-termination
+	GetHTTPResponseBody ( m_CSDBServerIP, CSDB_HOST, 443, filePath, pFileBuffer, iFileLength);
+	logger->Write( "getCSDBContent", LogNotice, "HTTPS Document length: %i", iFileLength);
+}
+
+void CSidekickNet::getCSDBBinaryContent( char * filePath ){
+	assert (m_isActive);
+	//getCSDBLatestReleases();		
+	if (m_tryFilesystemRemount){
+		m_tryFilesystemRemount = false;
+		logger->Write( "getCSDBBinaryContent", LogNotice, "Trying to remount filesystem");
+		mountSDDrive();
+	}
+	unsigned iFileLength = 0;
+	unsigned char prgDataLaunchTemp[ 65536 ];
+	if (GetHTTPResponseBody ( m_CSDBServerIP, CSDB_HOST, 443, (char *) filePath, (char *) prgDataLaunchTemp, iFileLength)){
+		m_isCSDBDownloadReady = true;
+		prgSizeLaunch = iFileLength;
+		memcpy( prgDataLaunch, prgDataLaunchTemp, iFileLength);
+	}
+	else{
+		setErrorMsgC64((char*)"https request failed (press d).");
+	}
+	
+	logger->Write( "getCSDBBinaryContent", LogNotice, "HTTPS Document length: %i", iFileLength);
+}
+
+void CSidekickNet::getCSDBLatestReleases(){
+	getCSDBContent( "latestreleases.php", "/rss/latestreleases.php" );
+}
+
 //for kernel render example
 void CSidekickNet::updateFrame(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
@@ -546,7 +642,8 @@ void CSidekickNet::updateFrame(){
 	unsigned iFileLength = 0;
 	if (m_videoFrameCounter < 1) m_videoFrameCounter = 1;
 	
-  CString path = "/videotest.php?frame=";
+  //CString path = "/videotest.php?frame=";
+	CString path = "/c64frames/big_buck_bunny_";
 	CString Number; 
 	Number.Format ("%05d", m_videoFrameCounter);
 	path.Append( Number );
@@ -561,44 +658,88 @@ void CSidekickNet::resetSktxSession(){
 	m_sktxSession	= 0;
 }
 
+void CSidekickNet::redrawSktxScreen(){
+	if (m_sktxSession == 1)
+		m_sktxSession	= 2;
+}
+
+void CSidekickNet::launchSktxSession(){
+	char * pResponseBuffer = new char[33];	// +1 for 0-termination
+	CString path = "/sktx.php?session=new";
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxResponseLength))
+	{
+		if ( m_sktxResponseLength > 25 && m_sktxResponseLength < 34){
+			m_sktxSessionID = pResponseBuffer;
+			m_sktxSessionID[m_sktxResponseLength] = '\0';
+			logger->Write( "launchSktxSession", LogNotice, "Got session id: %s", m_sktxSessionID);
+		}
+	}
+}
+
 void CSidekickNet::updateSktxScreenContent(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{
 		m_sktxScreenContent = (unsigned char *) msgNoConnection; //FIXME: there's a memory leak in here
 		return;
 	}
-	char * pResponseBuffer = new char[2048];	// +1 for 0-termination
+	char * pResponseBuffer = new char[4097];
 	if (pResponseBuffer == 0)
 	{
 		logger->Write( "updateSktxScreenContent", LogError, "Cannot allocate document buffer");
 		return;
 	}
-  CString path = "/sktx.php?client=";
-	path.Append( RaspiHasOnlyWLAN() ? "A":"B");
+  CString path = "/sktx.php?";//client=";
+	//path.Append( RaspiHasOnlyWLAN() ? "A":"B");
 	
-	if ( m_sktxSession == 0){
-		path.Append( "&session=new" );
+	if ( m_sktxSession < 1){
+		launchSktxSession();
 		m_sktxSession = 1;
 	}
+	else{
+		
+	}
+	
 	CString Number; 
 	Number.Format ("%02X", m_sktxKey);
 	path.Append( "&key=" );
 	path.Append( Number );
-		
-	m_sktxKey = 0;
-	//m_PlaygroundHttpHostPort
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxReponseLength))
+
+	path.Append( "&sessionid=" );
+	path.Append( m_sktxSessionID );
+	
+	if ( m_sktxSession == 2) //redraw
 	{
-		if ( m_sktxReponseLength > 0 )
+		m_sktxSession = 1;
+		path.Append( "&redraw=1" );
+	}
+	m_sktxKey = 0;
+	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxResponseLength))
+	{
+		if ( m_sktxResponseLength > 0 )
 		{
-			pResponseBuffer[m_sktxReponseLength-1] = '\0';
-			m_sktxReponseType = pResponseBuffer[0];
-			m_sktxScreenContent = (unsigned char * ) pResponseBuffer;
-			m_sktxScreenPosition = 1;
+			//logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document m_sktxResponseLength: %i", m_sktxResponseLength);
+			//pResponseBuffer[m_sktxResponseLength-1] = '\0';
+			m_sktxResponseType = pResponseBuffer[0];
+			if ( m_sktxResponseType == 2) // url for binary download, e. g. csdb
+			{
+				//cut off first 14 chars of URL: http://csdb.dk
+				char CSDBDownloadPath[2048] = "";
+				memcpy( CSDBDownloadPath, &pResponseBuffer[ 1 + 14  ], m_sktxResponseLength -14 +1);
+				//CSDBDownloadPath[m_sktxResponseLength] = '\0';
+				//logger->Write( "updateSktxScreenContent", LogNotice, "download path: >%s<", CSDBDownloadPath);
+				m_sktxResponseLength = 1;
+				m_sktxScreenContent = (unsigned char * ) pResponseBuffer;
+				m_sktxScreenPosition = 1;
+				queueCSDBDownload( CSDBDownloadPath );
+			}
+			else
+			{
+				m_sktxScreenContent = (unsigned char * ) pResponseBuffer;
+				m_sktxScreenPosition = 1;
+			}
 		}
 		pResponseBuffer = 0;
 		//logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document content: '%s'", m_sktxScreenContent);
-		logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document m_sktxReponseLength: %i", m_sktxReponseLength);
 		
 	}
 	else
@@ -609,17 +750,17 @@ void CSidekickNet::updateSktxScreenContent(){
 
 boolean CSidekickNet::IsSktxScreenContentEndReached()
 {
-	return m_sktxScreenPosition >= m_sktxReponseLength;
+	return m_sktxScreenPosition >= m_sktxResponseLength;
 }
 
 boolean CSidekickNet::IsSktxScreenToBeCleared()
 {
-	return m_sktxReponseType == 0;
+	return m_sktxResponseType == 0;
 }
 
 boolean CSidekickNet::IsSktxScreenUnchanged()
 {
-	return m_sktxReponseType == 2;
+	return m_sktxResponseType == 2;
 }
 
 void CSidekickNet::ResetSktxScreenContentChunks(){
@@ -628,7 +769,7 @@ void CSidekickNet::ResetSktxScreenContentChunks(){
 
 unsigned char * CSidekickNet::GetSktxScreenContentChunk( u16 & startPos, u8 &color )
 {
-	if ( m_sktxScreenPosition >= m_sktxReponseLength ){
+	if ( m_sktxScreenPosition >= m_sktxResponseLength ){
 		//logger->Write( "GetSktxScreenContentChunk", LogNotice, "End reached.");
 		startPos = 0;
 		color = 0;
@@ -665,23 +806,21 @@ unsigned char * CSidekickNet::GetSktxScreenContentChunk( u16 & startPos, u8 &col
 
 boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead)
 {
-	//This method is derived from the webclient example of circle.
 	assert (m_isActive);
 	assert (pBuffer != 0);
 	CString IPString;
 	ip.Format (&IPString);
 	logger->Write( "GetHTTPResponseBody", LogNotice, 
-		"HTTP GET to http://%s:%i%s (%s)", pHost, port, pFile, (const char *) IPString);
+		"HTTP GET to \'http(s)://%s:%i%s\' (%s)", pHost, port, pFile, (const char *) IPString);
 	unsigned nLength = nDocMaxSize;
-	CHTTPClient Client (&m_Net, ip, port, pHost);
+	CHTTPClient Client (&m_TLSSupport, ip, port, pHost, (port == 443));
 	THTTPStatus Status = Client.Get (pFile, (u8 *) pBuffer, &nLength);
 	if (Status != HTTPOK)
 	{
 		logger->Write( "GetHTTPResponseBody", LogError, "HTTP request failed (status %u)", Status);
-
 		return false;
 	}
-	//logger->Write( "GetHTTPResponseBody", LogDebug, "%u bytes successfully received", nLength);
+	logger->Write( "GetHTTPResponseBody", LogDebug, "%u bytes received", nLength);
 	assert (nLength <= nDocMaxSize);
 	pBuffer[nLength] = '\0';
 	nLengthRead = nLength;

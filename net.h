@@ -40,6 +40,9 @@
 #include <circle/util.h>
 #include <SDCard/emmc.h>
 
+#include <circle_glue.h>
+#include <circle-mbedtls/tlssimplesupport.h>
+
 #ifdef WITH_WLAN
 #include <fatfs/ff.h>
 #include <wlan/bcm4343.h>
@@ -53,6 +56,8 @@
 #define _sidekicknet_h
 
 extern CLogger *logger;
+
+using namespace CircleMbedTLS;
 
 class CSidekickNet
 {
@@ -74,9 +79,14 @@ public:
 	void queueFrameRequest();
 	void queueSktxKeypress( int );
 	void queueSktxRefresh();
+	void queueCSDBDownload( char *);
 	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( unsigned type);
+	void getCSDBContent( const char *, const char *);
+	void getCSDBBinaryContent( char *);
+	void getCSDBLatestReleases();
 	boolean isAnyNetworkActionQueued();
+	boolean isCSDBDownloadReady();
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 	boolean isWireless(){ return m_useWLAN;};
 	boolean RaspiHasOnlyWLAN();
@@ -92,10 +102,13 @@ public:
 	void ResetSktxScreenContentChunks();
 	void setErrorMsgC64( char * msg );
 	void resetSktxSession();
+	void launchSktxSession();
+	void redrawSktxScreen();
 
 private:
 	
 	boolean Prepare ( void );
+	boolean mountSDDrive();
 	boolean unmountSDDrive();
 	CIPAddress getIPForHost( const char * );
 	
@@ -104,18 +117,20 @@ private:
 	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
 	CScheduler        * m_pScheduler;
 	CTimer            * m_pTimer;
-#ifdef WITH_WLAN
 	CEMMCDevice		    m_EMMC;
-	CBcm4343Device    m_WLAN;
 	FATFS             m_FileSystem;
+#ifdef WITH_WLAN
+	CBcm4343Device    m_WLAN;
 #endif
 	CNetSubSystem     m_Net;
 	CIPAddress        m_DevHttpServerIP;
 	CIPAddress        m_PlaygroundHttpServerIP;
+	CIPAddress        m_CSDBServerIP;
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
 #endif
   CDNSClient        m_DNSClient;
+	CTLSSimpleSupport m_TLSSupport;
 
 	boolean m_useWLAN;
 	boolean m_isActive;
@@ -124,11 +139,15 @@ private:
 	boolean m_isKernelUpdateQueued;
 	boolean m_isFrameQueued;
 	boolean m_isSktxKeypressQueued;
-	unsigned char m_devServerMessage[32000];
+	boolean m_isCSDBDownloadQueued;
+	boolean m_isCSDBDownloadReady;
+	boolean m_tryFilesystemRemount;
 	char * m_networkActionStatusMsg;
 	unsigned char * m_sktxScreenContent;
-	unsigned char m_sktxScreenContentChunk[2048];
-  TMachineModel m_PiModel;
+	char * m_sktxSessionID;
+	char * m_CSDBDownloadPath;
+	TMachineModel m_PiModel;
+	unsigned char m_sktxScreenContentChunk[8192];
 	const char * m_DevHttpHost;
 	int m_DevHttpHostPort;
 	const char * m_PlaygroundHttpHost;
@@ -138,8 +157,8 @@ private:
 	unsigned m_effortsSinceLastEvent;
 	unsigned m_skipSktxRefresh;
 	unsigned m_sktxScreenPosition;
-	unsigned m_sktxReponseLength;
-	unsigned m_sktxReponseType;
+	unsigned m_sktxResponseLength;
+	unsigned m_sktxResponseType;
 	unsigned m_sktxKey;
 	unsigned m_sktxSession;
 	unsigned m_videoFrameCounter;
