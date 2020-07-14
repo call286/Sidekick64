@@ -44,7 +44,7 @@
 #include <circle-mbedtls/tlssimplesupport.h>
 
 #ifdef WITH_WLAN
-#include <fatfs/ff.h>
+//#include <fatfs/ff.h>
 #include <wlan/bcm4343.h>
 #include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
 #endif
