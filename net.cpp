@@ -291,7 +291,6 @@ boolean CSidekickNet::Prepare()
 		setErrorMsgC64((char*)"Can't mount SD card. Sorry.");
 		return false;
 	}	
-	CGlueStdioInit (m_FileSystem);
 	if (m_useWLAN)
 	{
 		#ifdef WITH_WLAN
@@ -304,6 +303,7 @@ boolean CSidekickNet::Prepare()
 		}
 		#endif
 	}
+	CGlueStdioInit (m_FileSystem);
 
 	if (!m_Net.Initialize (false))
 	{
