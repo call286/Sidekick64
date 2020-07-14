@@ -118,10 +118,10 @@ private:
 	CScheduler        * m_pScheduler;
 	CTimer            * m_pTimer;
 	CEMMCDevice		    m_EMMC;
-	FATFS             m_FileSystem;
 #ifdef WITH_WLAN
 	CBcm4343Device    m_WLAN;
 #endif
+	FATFS             m_FileSystem;
 	CNetSubSystem     m_Net;
 	CIPAddress        m_DevHttpServerIP;
 	CIPAddress        m_PlaygroundHttpServerIP;
