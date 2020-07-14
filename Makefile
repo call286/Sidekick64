@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-CIRCLE_STDLIB_DIR ?= ../..
+CIRCLE_STDLIB_DIR ?= ../circle-stdlib
 
 include $(CIRCLE_STDLIB_DIR)/Config.mk
 
