@@ -5,7 +5,6 @@ CIRCLE_STDLIB_DIR ?= ../circle-stdlib
 
 include $(CIRCLE_STDLIB_DIR)/Config.mk
 
-
 CIRCLEHOME  ?= $(CIRCLE_STDLIB_DIR)/libs/circle
 NEWLIBDIR   ?= $(CIRCLE_STDLIB_DIR)/install/$(NEWLIB_ARCH)
 MBEDTLS_DIR ?= $(CIRCLE_STDLIB_DIR)/libs/mbedtls
@@ -29,6 +28,10 @@ OBJS = lowlevel_arm64.o gpio_defs.o helpers.o latch.o oled.o ./OLED/ssd1306xled.
 ### MENU C64 ###
 ifeq ($(kernel), menu)
 CPPFLAGS += -DWITH_NET=1
+
+ifeq ($(wlan), on)
+CPPFLAGS += -DWITH_WLAN=1
+endif
 
 CPPFLAGS += -DCOMPILE_MENU=1
 OBJS += kernel_menu.o kernel_kernal.o kernel_launch.o kernel_ef.o kernel_fc3.o kernel_ar.o crt.o dirscan.o config.o kernel_rkl.o c64screen.o net.o
