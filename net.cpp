@@ -34,6 +34,9 @@
 #include "net.h"
 #include "helpers.h"
 #include "c64screen.h"
+//config provides sktx host and port
+#include "config.h"
+
 
 #include <circle/net/dnsclient.h>
 #include <circle/net/ntpclient.h>
@@ -143,17 +146,20 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 	  m_DevHttpHost = 0;
 	#endif
 	
-	#ifdef NET_PUBLIC_PLAY_SERVER
-	  m_PlaygroundHttpHost = (const char *) NET_PUBLIC_PLAY_SERVER;
-		#ifdef NET_PUBLIC_PLAY_SERVER_PORT
-			m_PlaygroundHttpHostPort = NET_PUBLIC_PLAY_SERVER_PORT;
-		#else
+	if (netSktxHostName != (char *) "")
+	{
+		m_PlaygroundHttpHost = (const char *) netSktxHostName;
+		
+		if (netSktxHostPort > 0 )
+		{
+			m_PlaygroundHttpHostPort = netSktxHostPort;
+		}
+		else
 			m_PlaygroundHttpHostPort = HTTP_PORT;
-		#endif
-	#else
-	  m_PlaygroundHttpHost = 0;
-	#endif
-
+	}
+	else
+		m_PlaygroundHttpHost = 0;
+		
 	#ifdef WITH_WLAN
 		m_useWLAN = true;
 	#else
@@ -199,9 +205,6 @@ boolean CSidekickNet::Initialize()
 		m_pScheduler->MsSleep (100);
 		sleepCount ++;
 	}
-	if ( m_useWLAN )
-		if ( !unmountSDDrive() )
-			return false;
 
 	if (!m_Net.IsRunning () && sleepCount >= sleepLimit){
 		logger->Write( "CSidekickNet::Initialize", LogNotice, 
@@ -291,6 +294,9 @@ boolean CSidekickNet::Prepare()
 		setErrorMsgC64((char*)"Can't mount SD card. Sorry.");
 		return false;
 	}	
+
+	CGlueStdioInit (m_FileSystem);
+
 	if (m_useWLAN)
 	{
 		#ifdef WITH_WLAN
@@ -303,7 +309,6 @@ boolean CSidekickNet::Prepare()
 		}
 		#endif
 	}
-	CGlueStdioInit (m_FileSystem);
 
 	if (!m_Net.Initialize (false))
 	{

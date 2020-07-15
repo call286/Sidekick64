@@ -41,6 +41,13 @@ u32 skinFontLoaded;
 char skinFontFilename[ 1024 ];
 union T_SKIN_VALUES	skinValues;
 
+#ifdef WITH_NET
+	char netSktxHostName[ 1024 ];
+	u32  netSktxHostPort = 80;
+	char netSktxHostUser[ 1024 ];
+	char netSktxHostPassword[ 1024 ];
+#endif
+
 void setSkinDefaultValues()
 {
 	skinFontLoaded = 0;
@@ -188,6 +195,43 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 				#endif
 				}
 
+#ifdef WITH_NET
+				if ( strcmp( ptr, "NET_SKTXHOST_NAME" ) == 0 )
+				{
+					ptr = strtok_r( NULL, " \"", &rest );
+					strncpy( netSktxHostName, ptr, 1023 );
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostName );
+				#endif
+				}
+				
+				if ( strcmp( ptr, "NET_SKTXHOST_PORT" ) == 0 )
+				{
+					ptr = strtok_r( NULL, " \"", &rest );
+					netSktxHostPort = atoi( ptr );
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostPort );
+				#endif
+				}
+
+				if ( strcmp( ptr, "NET_SKTXHOST_USERNAME" ) == 0 )
+				{
+					ptr = strtok_r( NULL, " \"", &rest );
+					strncpy( netSktxHostUser, ptr, 1023 );
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostUser );
+				#endif
+				}
+
+				if ( strcmp( ptr, "NET_SKTXHOST_PASSWORD" ) == 0 )
+				{
+					ptr = strtok_r( NULL, " \"", &rest );
+					strncpy( netSktxHostPassword, ptr, 1023 );
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostPassword );
+				#endif
+				}
+#endif
 			}
 		}
 	}
@@ -205,4 +249,3 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 
 	return 1;
 }
-

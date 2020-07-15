@@ -128,5 +128,11 @@ union  __attribute__((packed)) T_SKIN_VALUES {
 extern u32 skinFontLoaded;
 extern char skinFontFilename[ 1024 ];
 extern union T_SKIN_VALUES	skinValues;
+#ifdef WITH_NET
+	extern char netSktxHostName[ 1024 ];
+	extern u32 netSktxHostPort;
+	extern char netSktxHostUser[ 1024 ];
+	extern char netSktxHostPassword[ 1024 ];
+#endif
 
 #endif
