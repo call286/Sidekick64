@@ -27,14 +27,9 @@ OBJS = lowlevel_arm64.o gpio_defs.o helpers.o latch.o oled.o ./OLED/ssd1306xled.
 
 ### MENU C64 ###
 ifeq ($(kernel), menu)
-CPPFLAGS += -DWITH_NET=1
-
-ifeq ($(wlan), on)
-CPPFLAGS += -DWITH_WLAN=1
-endif
 
 CPPFLAGS += -DCOMPILE_MENU=1
-OBJS += kernel_menu.o kernel_kernal.o kernel_launch.o kernel_ef.o kernel_fc3.o kernel_ar.o crt.o dirscan.o config.o kernel_rkl.o c64screen.o net.o
+OBJS += kernel_menu.o kernel_kernal.o kernel_launch.o kernel_ef.o kernel_fc3.o kernel_ar.o crt.o dirscan.o config.o kernel_rkl.o c64screen.o 
 
 CPPFLAGS += -DCOMPILE_MENU_WITH_SOUND=1
 OBJS += kernel_sid.o kernel_sid8.o sound.o ./resid/dac.o ./resid/filter.o ./resid/envelope.o ./resid/extfilt.o ./resid/pot.o ./resid/sid.o ./resid/version.o ./resid/voice.o ./resid/wave.o fmopl.o 
@@ -42,10 +37,19 @@ CPPFLAGS += -DUSE_VCHIQ_SOUND=$(USE_VCHIQ_SOUND)
 
 LIBS	= $(CIRCLEHOME)/addon/vc4/sound/libvchiqsound.a \
         $(CIRCLEHOME)/addon/vc4/vchiq/libvchiq.a \
-        $(CIRCLEHOME)/addon/linux/liblinuxemu.a \
-        $(CIRCLEHOME)/lib/net/libnet.a \
-        $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
+        $(CIRCLEHOME)/addon/linux/liblinuxemu.a
+
+ifeq ($(net), on)
+CPPFLAGS += -DWITH_NET=1 
+OBJS += net.o
+LIBS += $(CIRCLEHOME)/lib/net/libnet.a
+ifeq ($(wlan), on)
+CPPFLAGS += -DWITH_WLAN=1
+LIBS += $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
         $(CIRCLEHOME)/addon/wlan/libwlan.a
+endif
+endif
+
 endif
 
 ### MENU C16/+4 ###
@@ -59,10 +63,17 @@ CPPFLAGS += -DUSE_VCHIQ_SOUND=$(USE_VCHIQ_SOUND)
 
 LIBS	= $(CIRCLEHOME)/addon/vc4/sound/libvchiqsound.a \
  	      $(CIRCLEHOME)/addon/vc4/vchiq/libvchiq.a \
-        $(CIRCLEHOME)/addon/linux/liblinuxemu.a \
-        $(CIRCLEHOME)/lib/net/libnet.a 
-#        $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
-#        $(CIRCLEHOME)/addon/wlan/libwlan.a
+        $(CIRCLEHOME)/addon/linux/liblinuxemu.a
+				
+ifeq ($(net), on)
+LIBS += $(CIRCLEHOME)/lib/net/libnet.a 
+ifeq ($(wlan), on)
+	LIBS += $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
+        	$(CIRCLEHOME)/addon/wlan/libwlan.a
+endif
+endif
+
+
 endif
 
 ### individual Kernels for C64 ###
@@ -78,14 +89,13 @@ ifeq ($(kernel), kernal)
 OBJS += kernel_kernal.o 
 endif
 
-ifeq ($(kernel), render)
-OBJS += kernel_render.o net.o
-CPPFLAGS += -DWITH_RENDER
-LIBS	= $(CIRCLEHOME)/lib/net/libnet.a \
-        $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
-        $(CIRCLEHOME)/addon/wlan/libwlan.a
-endif
-
+#ifeq ($(kernel), render)
+#OBJS += kernel_render.o net.o
+#CPPFLAGS += -DWITH_RENDER
+#LIBS	= $(CIRCLEHOME)/lib/net/libnet.a \
+#        $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
+#        $(CIRCLEHOME)/addon/wlan/libwlan.a
+#endif
 
 ifeq ($(kernel), ef)
 OBJS += kernel_ef.o crt.o 
@@ -124,24 +134,28 @@ include $(CIRCLEHOME)/Rules.mk
 
 INCLUDE += \
 	   -I $(CIRCLE_STDLIB_DIR)/include \
-	   -I $(NEWLIBDIR)/include \
-	   -I $(MBEDTLS_DIR)/include
+	   -I $(NEWLIBDIR)/include 
 
 LIBS += \
 	$(NEWLIBDIR)/lib/libm.a \
 	$(NEWLIBDIR)/lib/libc.a \
 	$(NEWLIBDIR)/lib/libcirclenewlib.a \
-	$(CIRCLE_STDLIB_DIR)/src/circle-mbedtls/libcircle-mbedtls.a \
-	$(MBEDTLS_DIR)/library/libmbedtls.a \
-	$(MBEDTLS_DIR)/library/libmbedx509.a \
-	$(MBEDTLS_DIR)/library/libmbedcrypto.a \
 	$(CIRCLEHOME)/addon/SDCard/libsdcard.a \
 	$(CIRCLEHOME)/lib/usb/libusb.a \
 	$(CIRCLEHOME)/lib/input/libinput.a \
 	$(CIRCLEHOME)/addon/fatfs/libfatfs.a \
 	$(CIRCLEHOME)/lib/fs/libfs.a \
-	$(CIRCLEHOME)/lib/net/libnet.a \
 	$(CIRCLEHOME)/lib/sched/libsched.a \
 	$(CIRCLEHOME)/lib/libcircle.a
+
+ifeq ($(net), on)
+INCLUDE += \
+	   -I $(MBEDTLS_DIR)/include
+LIBS += \
+	$(CIRCLE_STDLIB_DIR)/src/circle-mbedtls/libcircle-mbedtls.a \
+	$(MBEDTLS_DIR)/library/libmbedtls.a \
+	$(MBEDTLS_DIR)/library/libmbedx509.a \
+	$(MBEDTLS_DIR)/library/libmbedcrypto.a
+endif
 
 -include $(DEPS)
