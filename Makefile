@@ -55,7 +55,7 @@ endif
 ### MENU C16/+4 ###
 ifeq ($(kernel), menu264)
 CPPFLAGS += -DCOMPILE_MENU=1
-OBJS += kernel_menu264.o kernel_launch264.o dirscan.o 264config.o kernel_ramlaunch264.o 264screen.o mygpiopinfiq.o launch264.o net.o
+OBJS += kernel_menu264.o kernel_launch264.o dirscan.o 264config.o kernel_ramlaunch264.o 264screen.o mygpiopinfiq.o launch264.o
 
 CPPFLAGS += -DCOMPILE_MENU_WITH_SOUND=1
 OBJS += kernel_sid264.o sound.o ./resid/dac.o ./resid/filter.o ./resid/envelope.o ./resid/extfilt.o ./resid/pot.o ./resid/sid.o ./resid/version.o ./resid/voice.o ./resid/wave.o fmopl.o 
@@ -66,13 +66,15 @@ LIBS	= $(CIRCLEHOME)/addon/vc4/sound/libvchiqsound.a \
         $(CIRCLEHOME)/addon/linux/liblinuxemu.a
 				
 ifeq ($(net), on)
+CPPFLAGS += -DWITH_NET=1 
+OBJS += net.o
 LIBS += $(CIRCLEHOME)/lib/net/libnet.a 
 ifeq ($(wlan), on)
-	LIBS += $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
-        	$(CIRCLEHOME)/addon/wlan/libwlan.a
+CPPFLAGS += -DWITH_WLAN=1
+LIBS += $(CIRCLEHOME)/addon/wlan/hostap/wpa_supplicant/libwpa_supplicant.a \
+      	$(CIRCLEHOME)/addon/wlan/libwlan.a
 endif
 endif
-
 
 endif
 
