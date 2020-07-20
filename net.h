@@ -67,6 +67,7 @@ public:
 	{
 	};
 	CSidekickNet * GetPointer(){ return this; };
+	boolean ConnectOnBoot (void);
 	boolean Initialize ( void );
 	boolean IsRunning ( void );
 	boolean CheckForSidekickKernelUpdate ();

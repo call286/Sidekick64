@@ -133,6 +133,7 @@ extern union T_SKIN_VALUES	skinValues;
 	extern u32 netSktxHostPort;
 	extern char netSktxHostUser[ 1024 ];
 	extern char netSktxHostPassword[ 1024 ];
+	extern boolean netConnectOnBoot;
 #endif
 
 #endif

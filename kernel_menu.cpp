@@ -175,21 +175,6 @@ boolean CKernelMenu::Initialize( void )
 	pVCHIQ = &m_VCHIQ;
 #endif
 
-#ifdef WITH_NET
-	logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
-	//TODO: this should be done in constructor of SideKickNet
-	m_SidekickNet.setSidekickKernelUpdatePath( 64 );
-	/*
-	This is now triggered from Network screen by the user
-	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
-	if (bNetOK){
-		m_SidekickNet.CheckForSidekickKernelUpdate();
-	  m_SidekickNet.UpdateTime();
-	}
-	*/
-	pSidekickNet = m_SidekickNet.GetPointer();
-#endif
-
 	latchSetClearImm( LATCH_LED0, LATCH_LED1to3 );
 
 	// initialize ARM cycle counters (for accurate timing)
@@ -234,6 +219,20 @@ boolean CKernelMenu::Initialize( void )
 		//memcpy( 1024 + charset+8*(91), skcharlogo_raw, 224 ); <- this is the upper case font used in the browser, skip logo to keep all PETSCII character
 		memcpy( 2048 + charset+8*(91), skcharlogo_raw, 224 );
 	} 
+
+	#ifdef WITH_NET
+		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.setSidekickKernelUpdatePath( 64 );
+		if ( m_SidekickNet.ConnectOnBoot() ){
+			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
+			if (bNetOK){
+				m_SidekickNet.CheckForSidekickKernelUpdate();
+			  m_SidekickNet.UpdateTime();
+			}
+		}
+		pSidekickNet = m_SidekickNet.GetPointer();
+	#endif
 
 	readSettingsFile();
 	applySIDSettings();

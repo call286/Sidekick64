@@ -146,20 +146,7 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 	  m_DevHttpHost = 0;
 	#endif
 	
-	if (netSktxHostName != (char *) "")
-	{
-		m_PlaygroundHttpHost = (const char *) netSktxHostName;
-		
-		if (netSktxHostPort > 0 )
-		{
-			m_PlaygroundHttpHostPort = netSktxHostPort;
-		}
-		else
-			m_PlaygroundHttpHostPort = HTTP_PORT;
-	}
-	else
-		m_PlaygroundHttpHost = 0;
-		
+
 	#ifdef WITH_WLAN
 		m_useWLAN = true;
 	#else
@@ -180,6 +167,11 @@ void CSidekickNet::setSidekickKernelUpdatePath( unsigned type)
 {
 	m_SidekickKernelUpdatePath = type;
 };
+
+boolean CSidekickNet::ConnectOnBoot (){
+	return netConnectOnBoot;
+}
+
 
 boolean CSidekickNet::Initialize()
 {
@@ -217,7 +209,21 @@ boolean CSidekickNet::Initialize()
 
 	//net connection is up and running now
 	m_isActive = true;
-	
+
+	if (netSktxHostName != (char *) "")
+	{
+		m_PlaygroundHttpHost = (const char *) netSktxHostName;
+		
+		if ( netSktxHostPort != 0 )
+		{
+			m_PlaygroundHttpHostPort = netSktxHostPort;
+		}
+		else
+			m_PlaygroundHttpHostPort = HTTP_PORT;
+	}
+	else
+		m_PlaygroundHttpHost = 0;
+			
 	//TODO: these resolves could be postponed to the moment where the first 
 	//actual access takes place
 	if ( m_DevHttpHost != 0)

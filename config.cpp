@@ -43,9 +43,10 @@ union T_SKIN_VALUES	skinValues;
 
 #ifdef WITH_NET
 	char netSktxHostName[ 1024 ];
-	u32  netSktxHostPort = 80;
+	u32  netSktxHostPort = 0;
 	char netSktxHostUser[ 1024 ];
 	char netSktxHostPassword[ 1024 ];
+	boolean netConnectOnBoot = false;
 #endif
 
 void setSkinDefaultValues()
@@ -196,41 +197,52 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 				}
 
 #ifdef WITH_NET
+				
 				if ( strcmp( ptr, "NET_SKTXHOST_NAME" ) == 0 )
 				{
-					ptr = strtok_r( NULL, " \"", &rest );
+					ptr = strtok_r( NULL, "\"", &rest );
 					strncpy( netSktxHostName, ptr, 1023 );
 				#ifdef DEBUG_OUT
-					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostName );
+					logger->Write( "RaspiMenu", LogNotice, " sktx host name >%s<", netSktxHostName );
 				#endif
 				}
 				
 				if ( strcmp( ptr, "NET_SKTXHOST_PORT" ) == 0 )
 				{
-					ptr = strtok_r( NULL, " \"", &rest );
+					ptr = strtok_r( NULL, "\"", &rest );
 					netSktxHostPort = atoi( ptr );
 				#ifdef DEBUG_OUT
-					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostPort );
+					logger->Write( "RaspiMenu", LogNotice, " sktx host port  >%i<", netSktxHostPort );
 				#endif
 				}
 
 				if ( strcmp( ptr, "NET_SKTXHOST_USERNAME" ) == 0 )
 				{
-					ptr = strtok_r( NULL, " \"", &rest );
+					ptr = strtok_r( NULL, "\"", &rest );
 					strncpy( netSktxHostUser, ptr, 1023 );
 				#ifdef DEBUG_OUT
-					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostUser );
+					logger->Write( "RaspiMenu", LogNotice, " sktx username  >%s<", netSktxHostUser );
 				#endif
 				}
 
 				if ( strcmp( ptr, "NET_SKTXHOST_PASSWORD" ) == 0 )
 				{
-					ptr = strtok_r( NULL, " \"", &rest );
+					ptr = strtok_r( NULL, "\"", &rest );
 					strncpy( netSktxHostPassword, ptr, 1023 );
 				#ifdef DEBUG_OUT
-					logger->Write( "RaspiMenu", LogNotice, "  >%s<", netSktxHostPassword );
+					logger->Write( "RaspiMenu", LogNotice, " sktx pw >%s<", netSktxHostPassword );
 				#endif
 				}
+
+				if ( strcmp( ptr, "NET_CONNECT_ON_BOOT" ) == 0 )
+				{
+					ptr = strtok_r( NULL, "\"", &rest );
+					netConnectOnBoot = (atoi( ptr ) == 1);
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, " connect on boot  >%i<", netConnectOnBoot );
+				#endif
+				}			
+				
 #endif
 			}
 		}
