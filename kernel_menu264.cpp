@@ -176,18 +176,6 @@ boolean CKernelMenu::Initialize( void )
 	pVCHIQ = &m_VCHIQ;
 #endif
 
-#ifdef WITH_NET
-	static const char kernelUpdatePath[] = "/sidekick264/kernel8.img";
-	m_SidekickNet.setSidekickKernelUpdatePath(kernelUpdatePath);
-	boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
-	if (bNetOK){
-		//TODO: this should be done in constructor of SideKickNet
-		m_SidekickNet.CheckForSidekickKernelUpdate();
-	  m_SidekickNet.UpdateTime();
-		pSidekickNet = m_SidekickNet.GetPointer();
-	}
-#endif
-
 	latchSetClearImm( LATCH_LED0, LATCH_LED1to3 );
 
 	// initialize ARM cycle counters (for accurate timing)
@@ -242,6 +230,20 @@ boolean CKernelMenu::Initialize( void )
 		memcpy( 1024 + charset+8*(91), skcharlogo_raw, 224 );
 		memcpy( 2048 + charset+8*(91), skcharlogo_raw, 224 );
 	} 
+
+	#ifdef WITH_NET
+		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.setSidekickKernelUpdatePath( 264 );
+		if ( m_SidekickNet.ConnectOnBoot() ){
+			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
+			if (bNetOK){
+				//m_SidekickNet.CheckForSidekickKernelUpdate();
+			  m_SidekickNet.UpdateTime();
+			}
+		}
+		pSidekickNet = m_SidekickNet.GetPointer();
+	#endif
 
 	readSettingsFile();
 	applySIDSettings();
@@ -344,7 +346,7 @@ void CKernelMenu::Run( void )
 			lastChar = 0xfffffff;
 			doneWithHandling = 1;
 			updateMenu = 0;
-
+			
 			if ( launchKernel == 5 ) 
 			// either: launch CRT, no need to call an external RPi-kernel
 			// or: NeoRAM - Autostart
@@ -381,6 +383,23 @@ void CKernelMenu::Run( void )
 				}
 			} else
 			{
+				//to test this, please modify the ifdef and the code inside
+				#ifdef WITH_NET
+					if (m_SidekickNet.isAnyNetworkActionQueued())
+					{
+						m_InputPin.DisableInterrupt();
+						m_InputPin.DisconnectInterrupt();
+						EnableIRQs();
+						//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
+						//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
+						m_SidekickNet.handleQueuedNetworkAction();
+					
+						DisableIRQs();
+						m_InputPin.ConnectInterrupt( this->FIQHandler, this );
+						m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+					}
+				#endif
+				
 				CACHE_PRELOAD_DATA_CACHE( c64screen, 1024, CACHE_PRELOADL2STRM );
 				CACHE_PRELOAD_DATA_CACHE( c64color, 1024, CACHE_PRELOADL2STRM );
 				// trigger IRQ on C16/+4 which tells the menu code that the new screen is ready
