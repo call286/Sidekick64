@@ -553,7 +553,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	if ( m_DevHttpHost == 0 )
 	{
 		logger->Write( "CSidekickNet::CheckForSidekickKernelUpdate", LogNotice, 
-			"Skipping check: NET_DEV_SERVER is not defined."
+			"Skipping check: Update server is not defined."
 		);
 		return false;
 	}
