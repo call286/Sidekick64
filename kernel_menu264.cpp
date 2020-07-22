@@ -390,8 +390,6 @@ void CKernelMenu::Run( void )
 						m_InputPin.DisableInterrupt();
 						m_InputPin.DisconnectInterrupt();
 						EnableIRQs();
-						//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024/1024;
-						//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i MB", freeSpace);
 						m_SidekickNet.handleQueuedNetworkAction();
 					
 						DisableIRQs();

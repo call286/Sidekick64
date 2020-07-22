@@ -35,6 +35,7 @@
 #include "helpers.h"
 #include "c64screen.h"
 //config provides sktx host and port
+//this could lead to problems as there is also 264config.h
 #include "config.h"
 
 
@@ -215,7 +216,7 @@ boolean CSidekickNet::Initialize()
 	{
 		m_PlaygroundHttpHostPort = netSktxHostPort != 0 ? netSktxHostPort: HTTP_PORT;
 		m_PlaygroundHttpHost = (const char *) netSktxHostName;
-		if ( m_DevHttpHost != m_PlaygroundHttpHost)
+		if ( m_DevHttpHost != m_PlaygroundHttpHost) //probably wrong
 			m_PlaygroundHttpServerIP = getIPForHost(m_PlaygroundHttpHost);
 		else
 			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
@@ -224,6 +225,7 @@ boolean CSidekickNet::Initialize()
 		m_PlaygroundHttpHost = 0;
 			
 	m_CSDBServerIP = getIPForHost( CSDB_HOST );
+	m_NTPServerIP  = getIPForHost( NTPServer );
 	#ifndef WITH_RENDER
 	 clearErrorMsg(); //on c64screen, kernel menu
   #endif
@@ -393,9 +395,12 @@ void CSidekickNet::handleQueuedNetworkAction()
 		m_effortsSinceLastEvent++;
 		if ( m_effortsSinceLastEvent > 200)
 		{
-			//as a WLAN keep-alive, auto queue a network event
+			//Circle42 offers experimental WLAN, but it seems to
+			//disconnect very quickly if there is not traffic.
+			//This can be very annoying.
+			//As a WLAN keep-alive, we auto queue a network event
 			//to avoid WLAN going into "zombie" disconnected mode
-			UpdateTime(); //TODO: use something better here
+			UpdateTime();
 			m_effortsSinceLastEvent = 0;
 		}
 	}
@@ -519,16 +524,8 @@ CIPAddress CSidekickNet::getIPForHost( const char * host )
 boolean CSidekickNet::UpdateTime(void)
 {
 	assert (m_isActive);
-	CIPAddress NTPServerIP;
-	if (!m_DNSClient.Resolve (NTPServer, &NTPServerIP))
-	{
-		logger->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot resolve: %s",
-					(const char *) NTPServer);
-
-		return false;
-	}
 	CNTPClient NTPClient (&m_Net);
-	unsigned nTime = NTPClient.GetTime (NTPServerIP);
+	unsigned nTime = NTPClient.GetTime (m_NTPServerIP);
 	if (nTime == 0)
 	{
 		logger->Write ("CSidekickNet::UpdateTime", LogWarning, "Cannot get time from %s",

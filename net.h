@@ -130,6 +130,7 @@ private:
 	CIPAddress        m_DevHttpServerIP;
 	CIPAddress        m_PlaygroundHttpServerIP;
 	CIPAddress        m_CSDBServerIP;
+	CIPAddress        m_NTPServerIP;
 #ifdef WITH_WLAN
 	CWPASupplicant    m_WPASupplicant;	
 #endif
