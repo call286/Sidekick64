@@ -32,12 +32,11 @@
 */
 
 #include "net.h"
-#ifndef IS264
 #include "helpers.h"
+#ifndef IS264
 #include "c64screen.h"
 #include "config.h"
 #else
-#include "helpers264.h"
 #include "264screen.h"
 #include "264config.h"
 #endif
