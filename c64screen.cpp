@@ -975,14 +975,8 @@ void printMainMenu()
 	printC64( menuX[ 0 ], menuY[ 0 ]+3, "F5", skinValues.SKIN_MENU_TEXT_KEY, 0 );
 	printC64( menuX[ 0 ]+3, menuY[ 0 ]+3, "Settings", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 #ifdef WITH_NET
-	if (
-		(pSidekickNet->RaspiHasOnlyWLAN() && pSidekickNet->isWireless() ) ||
-	  (!pSidekickNet->RaspiHasOnlyWLAN() && !pSidekickNet->isWireless() )
-	)
-	{
 		printC64( menuX[ 0 ], menuY[ 0 ]+4, "F6", skinValues.SKIN_MENU_TEXT_KEY, 0 );
 		printC64( menuX[ 0 ]+3, menuY[ 0 ]+4, "Network", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	}
 #endif
 
 	printSidekickLogo();
@@ -1063,7 +1057,7 @@ void printNetworkScreen()
 		{
 			//                   "012345678901234567890123456789012345XXXX"
 			printC64( x+1, y1+5, "Press >C< to enable WIFI. (Config",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-			printC64( x+1, y1+6, "file with SSID and passphrase are",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+			printC64( x+1, y1+6, "file with SSID and passphrase is",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 			printC64( x+1, y1+7, "needed on the SD card.)"          ,   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		}
 		else if (pSidekickNet->RaspiHasOnlyWLAN())
