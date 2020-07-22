@@ -227,7 +227,7 @@ boolean CKernelMenu::Initialize( void )
 		if ( m_SidekickNet.ConnectOnBoot() ){
 			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 			if (bNetOK){
-				m_SidekickNet.CheckForSidekickKernelUpdate();
+				//m_SidekickNet.CheckForSidekickKernelUpdate();
 			  m_SidekickNet.UpdateTime();
 			}
 		}
@@ -342,10 +342,8 @@ void CKernelMenu::Run( void )
 		asm volatile ("wfi");
 
 		#ifdef WITH_NET
-		if ( m_SidekickNet.isCSDBDownloadReady()){
-			launchKernel = 40; 
-			size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024;
-			logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i KB", freeSpace);
+		if ( m_SidekickNet.isPRGDownloadReady()){
+			launchKernel = 40;
 			lastChar = 0xfffffff;
 		}
 		#endif
@@ -377,8 +375,7 @@ void CKernelMenu::Run( void )
 				m_InputPin.DisableInterrupt();
 				m_InputPin.DisconnectInterrupt();
 				EnableIRQs();
-				//size_t freeSpace = m_Memory.GetHeapFreeSpace(HEAP_ANY)/1024;
-				//logger->Write( "MenuFreeSpace", LogNotice, "GetHeapFreeSpace: %i KB", freeSpace);
+				m_SidekickNet.updateSystemMonitor( m_Memory.GetHeapFreeSpace(HEAP_ANY), m_CPUThrottle.GetTemperature());
 				m_SidekickNet.handleQueuedNetworkAction();
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );

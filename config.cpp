@@ -42,10 +42,12 @@ char skinFontFilename[ 1024 ];
 union T_SKIN_VALUES	skinValues;
 
 #ifdef WITH_NET
-	char netSktxHostName[ 1024 ];
+	char netUpdateHostName[ 256 ];
+	u32  netUpdateHostPort = 0;
+	char netSktxHostName[ 256 ];
 	u32  netSktxHostPort = 0;
-	char netSktxHostUser[ 1024 ];
-	char netSktxHostPassword[ 1024 ];
+	char netSktxHostUser[ 64 ];
+	char netSktxHostPassword[ 64 ];
 	boolean netConnectOnBoot = false;
 #endif
 
@@ -197,11 +199,28 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 				}
 
 #ifdef WITH_NET
+				if ( strcmp( ptr, "NET_UPDATEHOST_NAME" ) == 0 )
+				{
+					ptr = strtok_r( NULL, "\"", &rest );
+					strncpy( netUpdateHostName, ptr, 255 );
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, " update host name >%s<", netUpdateHostName );
+				#endif
+				}
+				
+				if ( strcmp( ptr, "NET_UPDATEHOST_PORT" ) == 0 )
+				{
+					ptr = strtok_r( NULL, "\"", &rest );
+					netUpdateHostPort = atoi( ptr );
+				#ifdef DEBUG_OUT
+					logger->Write( "RaspiMenu", LogNotice, " update host port  >%i<", netUpdateHostPort );
+				#endif
+				}
 				
 				if ( strcmp( ptr, "NET_SKTXHOST_NAME" ) == 0 )
 				{
 					ptr = strtok_r( NULL, "\"", &rest );
-					strncpy( netSktxHostName, ptr, 1023 );
+					strncpy( netSktxHostName, ptr, 255 );
 				#ifdef DEBUG_OUT
 					logger->Write( "RaspiMenu", LogNotice, " sktx host name >%s<", netSktxHostName );
 				#endif
@@ -219,7 +238,7 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 				if ( strcmp( ptr, "NET_SKTXHOST_USERNAME" ) == 0 )
 				{
 					ptr = strtok_r( NULL, "\"", &rest );
-					strncpy( netSktxHostUser, ptr, 1023 );
+					strncpy( netSktxHostUser, ptr, 63 );
 				#ifdef DEBUG_OUT
 					logger->Write( "RaspiMenu", LogNotice, " sktx username  >%s<", netSktxHostUser );
 				#endif
@@ -228,7 +247,7 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 				if ( strcmp( ptr, "NET_SKTXHOST_PASSWORD" ) == 0 )
 				{
 					ptr = strtok_r( NULL, "\"", &rest );
-					strncpy( netSktxHostPassword, ptr, 1023 );
+					strncpy( netSktxHostPassword, ptr, 63 );
 				#ifdef DEBUG_OUT
 					logger->Write( "RaspiMenu", LogNotice, " sktx pw >%s<", netSktxHostPassword );
 				#endif
@@ -241,8 +260,7 @@ int readConfig( CLogger *logger, char *DRIVE, char *FILENAME )
 				#ifdef DEBUG_OUT
 					logger->Write( "RaspiMenu", LogNotice, " connect on boot  >%i<", netConnectOnBoot );
 				#endif
-				}			
-				
+				}
 #endif
 			}
 		}

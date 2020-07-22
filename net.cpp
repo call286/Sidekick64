@@ -85,8 +85,6 @@ extern u32 prgSizeLaunch;
 extern unsigned char prgDataLaunch[ 65536 ];
 #ifdef WITH_RENDER
   extern unsigned char logo_bg_raw[32000];
-#else
-  unsigned char logo_bg_raw[32000];
 #endif
 
 CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer, CScheduler * pScheduler, CEMMCDevice * pEmmcDevice  )
@@ -109,8 +107,8 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_isFrameQueued( false ),
 		m_isSktxKeypressQueued( false ),
 		m_isCSDBDownloadQueued( false ),
-		m_isCSDBDownloadReady( false ),
-		m_tryFilesystemRemount( false ),
+		m_isPRGDownloadReady( false ),
+		//m_tryFilesystemRemount( false ),
 		m_networkActionStatusMsg( (char * ) ""),
 		m_sktxScreenContent( (unsigned char * ) ""),
 		m_sktxSessionID( (char * ) ""),
@@ -129,23 +127,15 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_sktxResponseType(0),
 		m_sktxKey(0),
 		m_sktxSession(0),
-		m_videoFrameCounter(1)
+		m_videoFrameCounter(1),
+		//m_sysMonInfo(""),
+		m_sysMonHeapFree(0),
+		m_sysMonCPUTemp(0)
+		
 {
 	assert (m_pTimer != 0);
 	assert (& m_pScheduler != 0);
 	assert (& m_USBHCI != 0);
-
-	#ifdef NET_DEV_SERVER
-	  m_DevHttpHost = (const char *) NET_DEV_SERVER;
-		#ifdef DNET_DEV_SERVER_PORT
-			m_DevHttpHostPort = DNET_DEV_SERVER_PORT;
-		#else
-			m_DevHttpHostPort = HTTP_PORT;
-		#endif
-	#else
-	  m_DevHttpHost = 0;
-	#endif
-	
 
 	#ifdef WITH_WLAN
 		m_useWLAN = true;
@@ -210,30 +200,29 @@ boolean CSidekickNet::Initialize()
 	//net connection is up and running now
 	m_isActive = true;
 
+	//TODO: the resolves could be postponed to the moment where the first 
+	//actual access takes place
+	if (netUpdateHostName != (char *) "")
+	{
+		m_DevHttpHostPort = netUpdateHostPort != 0 ? netUpdateHostPort: HTTP_PORT;
+	  m_DevHttpHost = (const char *) netUpdateHostName;
+		m_DevHttpServerIP = getIPForHost(m_DevHttpHost);
+	}
+	else
+	  m_DevHttpHost = 0;
+	
 	if (netSktxHostName != (char *) "")
 	{
+		m_PlaygroundHttpHostPort = netSktxHostPort != 0 ? netSktxHostPort: HTTP_PORT;
 		m_PlaygroundHttpHost = (const char *) netSktxHostName;
-		
-		if ( netSktxHostPort != 0 )
-		{
-			m_PlaygroundHttpHostPort = netSktxHostPort;
-		}
+		if ( m_DevHttpHost != m_PlaygroundHttpHost)
+			m_PlaygroundHttpServerIP = getIPForHost(m_PlaygroundHttpHost);
 		else
-			m_PlaygroundHttpHostPort = HTTP_PORT;
+			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
 	}
 	else
 		m_PlaygroundHttpHost = 0;
 			
-	//TODO: these resolves could be postponed to the moment where the first 
-	//actual access takes place
-	if ( m_DevHttpHost != 0)
-		m_DevHttpServerIP = getIPForHost(m_DevHttpHost);
-	if ( m_PlaygroundHttpHost != 0 ){
-		if ( m_DevHttpHost != m_PlaygroundHttpHost)
-			m_PlaygroundHttpServerIP = getIPForHost( m_PlaygroundHttpHost);
-		else
-			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
-	}
 	m_CSDBServerIP = getIPForHost( CSDB_HOST );
 	#ifndef WITH_RENDER
 	 clearErrorMsg(); //on c64screen, kernel menu
@@ -444,7 +433,9 @@ void CSidekickNet::handleQueuedNetworkAction()
 		
 		else if (m_isFrameQueued)
 		{
+			#ifdef WITH_RENDER
 			updateFrame();
+			#endif
 			m_isFrameQueued = false;
 			m_effortsSinceLastEvent = 0;
 		}
@@ -471,13 +462,15 @@ boolean CSidekickNet::isAnyNetworkActionQueued()
 	return m_isNetworkInitQueued || m_isKernelUpdateQueued || m_isFrameQueued || m_isSktxKeypressQueued;
 }
 
-boolean CSidekickNet::isCSDBDownloadReady()
+boolean CSidekickNet::isPRGDownloadReady()
 {
-	boolean bTemp = m_isCSDBDownloadReady;
-	if ( m_isCSDBDownloadReady){
-		m_isCSDBDownloadReady = false;
+	boolean bTemp = m_isPRGDownloadReady;
+	if ( m_isPRGDownloadReady){
+		m_isPRGDownloadReady = false;
+		//this is only necessary as long as we don't have the concept
+		//to mount the filesystem once and for all during runtime
 		unmountSDDrive();
-		m_tryFilesystemRemount = true;
+		//m_tryFilesystemRemount = true;
 	}
 	return bTemp;
 }
@@ -504,7 +497,7 @@ CString CSidekickNet::getTimeString()
 
 CString CSidekickNet::getRaspiModelName()
 {
-	return m_pMachineInfo->Get()->GetMachineName ();
+	return m_pMachineInfo->Get()->GetMachineName();
 }
 
 CNetConfig * CSidekickNet::GetNetConfig(){
@@ -587,7 +580,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	unsigned type = 0;
 	if ( m_SidekickKernelUpdatePath == 264 ) type = 1;
 		 
-	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, m_DevHttpHostPort, kernelUpdatePath[type], pFileBuffer, iFileLength))
+	if ( HTTPGet ( m_DevHttpServerIP, m_DevHttpHost, m_DevHttpHostPort, kernelUpdatePath[type], pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write kernel file to SD card, bytes to write: %i", iFileLength
@@ -596,7 +589,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 		m_pScheduler->MsSleep (500);
 		logger->Write( "SidekickKernelUpdater", LogNotice, "Finished writing kernel to SD card");
 	}
-	if ( GetHTTPResponseBody ( m_DevHttpServerIP, m_DevHttpHost, m_DevHttpHostPort, prgUpdatePath[type], pFileBuffer, iFileLength))
+	if ( HTTPGet ( m_DevHttpServerIP, m_DevHttpHost, m_DevHttpHostPort, prgUpdatePath[type], pFileBuffer, iFileLength))
 	{
 		logger->Write( "SidekickKernelUpdater", LogNotice, 
 			"Now trying to write rpimenu.prg file to SD card, bytes to write: %i", iFileLength
@@ -613,22 +606,16 @@ void CSidekickNet::getCSDBContent( const char * fileName, const char * filePath)
 	assert (m_isActive);
 	unsigned iFileLength = 0;
 	char * pFileBuffer = new char[nDocMaxSize+1];	// +1 for 0-termination
-	GetHTTPResponseBody ( m_CSDBServerIP, CSDB_HOST, 443, filePath, pFileBuffer, iFileLength);
+	HTTPGet ( m_CSDBServerIP, CSDB_HOST, 443, filePath, pFileBuffer, iFileLength);
 	logger->Write( "getCSDBContent", LogNotice, "HTTPS Document length: %i", iFileLength);
 }
 
 void CSidekickNet::getCSDBBinaryContent( char * filePath ){
 	assert (m_isActive);
-	//getCSDBLatestReleases();		
-	if (m_tryFilesystemRemount){
-		m_tryFilesystemRemount = false;
-		logger->Write( "getCSDBBinaryContent", LogNotice, "Trying to remount filesystem");
-		mountSDDrive();
-	}
 	unsigned iFileLength = 0;
 	unsigned char prgDataLaunchTemp[ 65536 ];
-	if (GetHTTPResponseBody ( m_CSDBServerIP, CSDB_HOST, 443, (char *) filePath, (char *) prgDataLaunchTemp, iFileLength)){
-		m_isCSDBDownloadReady = true;
+	if (HTTPGet ( m_CSDBServerIP, CSDB_HOST, 443, (char *) filePath, (char *) prgDataLaunchTemp, iFileLength)){
+		m_isPRGDownloadReady = true;
 		prgSizeLaunch = iFileLength;
 		memcpy( prgDataLaunch, prgDataLaunchTemp, iFileLength);
 	}
@@ -644,6 +631,8 @@ void CSidekickNet::getCSDBLatestReleases(){
 }
 
 //for kernel render example
+#ifdef WITH_RENDER
+
 void CSidekickNet::updateFrame(){
 	if (!m_isActive || m_PlaygroundHttpHost == 0)
 	{
@@ -659,10 +648,11 @@ void CSidekickNet::updateFrame(){
 	path.Append( Number );
 	path.Append( ".bin" );
 		
-	GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, (char*) logo_bg_raw, iFileLength);
+	HTTPGet ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, (char*) logo_bg_raw, iFileLength);
 	m_videoFrameCounter++;
 	if (m_videoFrameCounter > 1500) m_videoFrameCounter = 1;
 }
+#endif
 
 void CSidekickNet::resetSktxSession(){
 	m_sktxSession	= 0;
@@ -676,7 +666,7 @@ void CSidekickNet::redrawSktxScreen(){
 void CSidekickNet::launchSktxSession(){
 	char * pResponseBuffer = new char[33];	// +1 for 0-termination
 	CString path = "/sktx.php?session=new";
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxResponseLength))
+	if (HTTPGet ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxResponseLength))
 	{
 		if ( m_sktxResponseLength > 25 && m_sktxResponseLength < 34){
 			m_sktxSessionID = pResponseBuffer;
@@ -698,15 +688,11 @@ void CSidekickNet::updateSktxScreenContent(){
 		logger->Write( "updateSktxScreenContent", LogError, "Cannot allocate document buffer");
 		return;
 	}
-  CString path = "/sktx.php?";//client=";
-	//path.Append( RaspiHasOnlyWLAN() ? "A":"B");
+  CString path = "/sktx.php?";
 	
 	if ( m_sktxSession < 1){
 		launchSktxSession();
 		m_sktxSession = 1;
-	}
-	else{
-		
 	}
 	
 	CString Number; 
@@ -723,7 +709,7 @@ void CSidekickNet::updateSktxScreenContent(){
 		path.Append( "&redraw=1" );
 	}
 	m_sktxKey = 0;
-	if (GetHTTPResponseBody ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxResponseLength))
+	if (HTTPGet ( m_PlaygroundHttpServerIP, m_PlaygroundHttpHost, m_PlaygroundHttpHostPort, path, pResponseBuffer, m_sktxResponseLength))
 	{
 		if ( m_sktxResponseLength > 0 )
 		{
@@ -814,25 +800,72 @@ unsigned char * CSidekickNet::GetSktxScreenContentChunk( u16 & startPos, u8 &col
   return m_sktxScreenContentChunk;
 }
 
-boolean CSidekickNet::GetHTTPResponseBody ( CIPAddress ip, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead)
+boolean CSidekickNet::HTTPGet ( CIPAddress ip, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead)
 {
 	assert (m_isActive);
 	assert (pBuffer != 0);
+	
+	//this remount stuff is only temporarily necessary as long as we don't have 
+	//the sd filesystem mounted consistently all the time during runtime
+	//it became necessary when we started to implement https requests
+	//as in case of https some certificate files are requested from sd
+	//so we can limit the remount hack to those requests where port 443 is used.
+	boolean isHTTPS = port == 443;
+	//if (m_tryFilesystemRemount){
+		//m_tryFilesystemRemount = false;
+		if (isHTTPS)
+		{
+			logger->Write( "HTTPGet", LogNotice, "Trying to remount filesystem");
+			mountSDDrive();
+		}
+	//}
+	
 	CString IPString;
 	ip.Format (&IPString);
-	logger->Write( "GetHTTPResponseBody", LogNotice, 
-		"HTTP GET to \'http(s)://%s:%i%s\' (%s)", pHost, port, pFile, (const char *) IPString);
+	if (isHTTPS )
+		logger->Write( "HTTPGet", LogNotice, 
+			"GET: https://%s%s (%s)", pHost, pFile, (const char *) IPString);
+	else if (port == 80)
+		logger->Write( "HTTPGet", LogNotice, 
+			"GET: http://%s%s (%s)", pHost, pFile, (const char *) IPString);
+	else
+		logger->Write( "HTTPGet", LogNotice, 
+			"GET to http://%s:%i%s (%s)", pHost, port, pFile, (const char *) IPString);
 	unsigned nLength = nDocMaxSize;
-	CHTTPClient Client (&m_TLSSupport, ip, port, pHost, (port == 443));
+	CHTTPClient Client (&m_TLSSupport, ip, port, pHost, isHTTPS); //TODO put this into member var?
 	THTTPStatus Status = Client.Get (pFile, (u8 *) pBuffer, &nLength);
 	if (Status != HTTPOK)
 	{
-		logger->Write( "GetHTTPResponseBody", LogError, "HTTP request failed (status %u)", Status);
+		logger->Write( "HTTPGet", LogError, "HTTP request failed (status %u)", Status);
 		return false;
 	}
-	logger->Write( "GetHTTPResponseBody", LogDebug, "%u bytes received", nLength);
+	logger->Write( "HTTPGet", LogDebug, "%u bytes received", nLength);
 	assert (nLength <= nDocMaxSize);
 	pBuffer[nLength] = '\0';
 	nLengthRead = nLength;
 	return true;
+}
+
+void CSidekickNet::updateSystemMonitor( size_t freeSpace, unsigned CpuTemp)
+{
+	m_sysMonHeapFree = freeSpace;
+	m_sysMonCPUTemp = CpuTemp;
+//	if ( m_effortsSinceLastEvent > 50)
+//		logger->Write( "Net/SystemMonitor", LogNotice, "Free Heap Space: %i KB, CPU temperature: %i", freeSpace/1024, CpuTemp);
+}
+
+CString CSidekickNet::getSysMonInfo()
+{
+	CString m_sysMonInfo = "";
+	m_sysMonInfo.Append("rbpi: cpu temp: ");
+	//const char * test = atoi( CpuTemp );
+	CString Number; 
+	Number.Format ("%02d", m_sysMonCPUTemp);
+	m_sysMonInfo.Append( Number );
+	m_sysMonInfo.Append("'c, ");
+	CString Number2; 
+	Number2.Format ("%02d", m_sysMonHeapFree/1024);
+	m_sysMonInfo.Append( Number2 );
+	m_sysMonInfo.Append(" kb free");
+	return m_sysMonInfo;
 }

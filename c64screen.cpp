@@ -1015,6 +1015,10 @@ void printNetworkScreen()
 	CString strTimeDate = "";
 	strTimeDate.Append( pSidekickNet->getTimeString());
 	
+	CString strSysMon = "";
+	strSysMon.Append( pSidekickNet->getSysMonInfo());
+
+	
 	CString strIpAdress   = "IP address:      "; 
 	CString strNetMask    = "Netmask:         "; 
 	CString strDefGateway = "Default Gateway: "; 
@@ -1089,10 +1093,10 @@ void printNetworkScreen()
 	
 	printC64( x+1, y1+15, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+16, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	
 	printC64( x+1, y1+18, "System time", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( x+1, y1+17, strSysMon, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+19, strTimeDate, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-
+	
 	printC64( x+28, 24, "Circle " CIRCLE_VERSION_STRING, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 	
 	printSidekickLogo();
@@ -1139,6 +1143,7 @@ void printSKTXScreen()
 			pSidekickNet->ResetSktxScreenContentChunks();
 		}
 	}
+	printC64( 1, 24, pSidekickNet->getSysMonInfo(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 
 	startInjectCode();
 	injectPOKE( 53280, skinValues.SKIN_MENU_BORDER_COLOR );

@@ -71,9 +71,11 @@ public:
 	boolean Initialize ( void );
 	boolean IsRunning ( void );
 	boolean CheckForSidekickKernelUpdate ();
-	boolean GetHTTPResponseBody (CIPAddress, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead);
+	boolean HTTPGet (CIPAddress, const char * pHost, int port, const char * pFile, char *pBuffer, unsigned & nLengthRead);
 	boolean UpdateTime (void);
+	#ifdef WITH_RENDER
 	void updateFrame();
+	#endif
 	void updateSktxScreenContent();
 	void queueNetworkInit();
 	void queueKernelUpdate();
@@ -87,7 +89,7 @@ public:
 	void getCSDBBinaryContent( char *);
 	void getCSDBLatestReleases();
 	boolean isAnyNetworkActionQueued();
-	boolean isCSDBDownloadReady();
+	boolean isPRGDownloadReady();
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
 	boolean isWireless(){ return m_useWLAN;};
 	boolean RaspiHasOnlyWLAN();
@@ -100,11 +102,13 @@ public:
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
 	CString getRaspiModelName();
+	CString getSysMonInfo();
 	void ResetSktxScreenContentChunks();
 	void setErrorMsgC64( char * msg );
 	void resetSktxSession();
 	void launchSktxSession();
 	void redrawSktxScreen();
+	void updateSystemMonitor( size_t, unsigned);
 
 private:
 	
@@ -112,7 +116,6 @@ private:
 	boolean mountSDDrive();
 	boolean unmountSDDrive();
 	CIPAddress getIPForHost( const char * );
-	
 	
 	CUSBHCIDevice     m_USBHCI;
 	CMachineInfo      * m_pMachineInfo; //used for c64screen to display raspi model name
@@ -141,8 +144,8 @@ private:
 	boolean m_isFrameQueued;
 	boolean m_isSktxKeypressQueued;
 	boolean m_isCSDBDownloadQueued;
-	boolean m_isCSDBDownloadReady;
-	boolean m_tryFilesystemRemount;
+	boolean m_isPRGDownloadReady;
+	//boolean m_tryFilesystemRemount;
 	char * m_networkActionStatusMsg;
 	unsigned char * m_sktxScreenContent;
 	char * m_sktxSessionID;
@@ -163,6 +166,10 @@ private:
 	unsigned m_sktxKey;
 	unsigned m_sktxSession;
 	unsigned m_videoFrameCounter;
+	//const char * m_sysMonInfo;
+	//CString m_sysMonInfo;
+	size_t m_sysMonHeapFree;
+	unsigned m_sysMonCPUTemp;
 };
 
 #endif
