@@ -32,11 +32,15 @@
 */
 
 #include "net.h"
+#ifndef IS264
 #include "helpers.h"
 #include "c64screen.h"
-//config provides sktx host and port
-//this could lead to problems as there is also 264config.h
 #include "config.h"
+#else
+#include "helpers264.h"
+#include "264screen.h"
+#include "264config.h"
+#endif
 
 
 #include <circle/net/dnsclient.h>

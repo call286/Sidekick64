@@ -54,6 +54,7 @@ endif
 
 ### MENU C16/+4 ###
 ifeq ($(kernel), menu264)
+CPPFLAGS += -DIS264
 CPPFLAGS += -DCOMPILE_MENU=1
 OBJS += kernel_menu264.o kernel_launch264.o dirscan.o 264config.o kernel_ramlaunch264.o 264screen.o mygpiopinfiq.o launch264.o
 
