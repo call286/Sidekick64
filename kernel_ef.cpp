@@ -197,7 +197,8 @@ __attribute__( ( always_inline ) ) inline void prefetchComplete()
 
 #ifdef COMPILE_MENU
 static void KernelEFFIQHandler( void *pParam );
-void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME )
+void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, bool hasData = false, u8 *crtDataExt = NULL, u32 crtSizeExt = 0 )
+
 #else
 void CKernelEF::Run( void )
 #endif
@@ -223,7 +224,18 @@ void CKernelEF::Run( void )
 
 	// read .CRT
 	ef.flash_cacheoptimized = (u8 *)( ( (u64)&flash_cacheoptimized_pool[ 0 ] + 128 ) & ~127 );
-	readCRTFile( logger, &header, (char*)DRIVE, (char*)FILENAME, (u8*)ef.flash_cacheoptimized, &ef.bankswitchType, &ef.ROM_LH, &ef.nBanks );
+	#ifdef COMPILE_MENU
+	if ( !hasData )
+	{
+	#endif
+		readCRTFile( logger, &header, (char*)DRIVE, (char*)FILENAME, (u8*)ef.flash_cacheoptimized, &ef.bankswitchType, &ef.ROM_LH, &ef.nBanks );
+	#ifdef COMPILE_MENU
+	}
+	else{
+		parseCRTInMemory( logger, &header, (u8*)ef.flash_cacheoptimized, &ef.bankswitchType, &ef.ROM_LH, &ef.nBanks, false, crtDataExt, crtSizeExt );
+	}
+	#endif
+
 
 	// first initialization of EF
 	for ( u32 i = 0; i < sizeof( memconfig_table ); i++ )
@@ -494,4 +506,3 @@ cleanup:
 	CLEAR_LEDS_EVERY_8K_CYCLES
 	OUTPUT_LATCH_AND_FINISH_BUS_HANDLING
 }
-

@@ -86,7 +86,7 @@ static const char * kernelUpdatePath[2] = { "/sidekick64/kernel8.img", "/sidekic
 //temporary hack
 
 extern u32 prgSizeLaunch;
-extern unsigned char prgDataLaunch[ 65536 ];
+extern unsigned char prgDataLaunch[ 1025*1024 ];
 #ifdef WITH_RENDER
   extern unsigned char logo_bg_raw[32000];
 #endif
@@ -117,6 +117,10 @@ CSidekickNet::CSidekickNet( CInterruptSystem * pInterruptSystem, CTimer * pTimer
 		m_sktxScreenContent( (unsigned char * ) ""),
 		m_sktxSessionID( (char * ) ""),
 		m_CSDBDownloadPath( (char * ) ""),
+		m_CSDBDownloadExtension( (char * ) ""),
+		m_CSDBDownloadFilename( (char * ) ""),
+		m_CSDBDownloadSavePath( (char *)"" ),
+		m_bSaveCSDBDownload2SD( false ),
 		m_PiModel( m_pMachineInfo->Get()->GetMachineModel () ),
 		m_DevHttpHost(0),
 		m_DevHttpHostPort(0),
@@ -206,7 +210,7 @@ boolean CSidekickNet::Initialize()
 
 	//TODO: the resolves could be postponed to the moment where the first 
 	//actual access takes place
-	if (netUpdateHostName != (char *) "")
+	if ( strcmp(netUpdateHostName,"") != 0)
 	{
 		m_DevHttpHostPort = netUpdateHostPort != 0 ? netUpdateHostPort: HTTP_PORT;
 	  m_DevHttpHost = (const char *) netUpdateHostName;
@@ -215,11 +219,11 @@ boolean CSidekickNet::Initialize()
 	else
 	  m_DevHttpHost = 0;
 	
-	if (netSktxHostName != (char *) "")
+	if (strcmp(netSktxHostName,"") != 0)
 	{
 		m_PlaygroundHttpHostPort = netSktxHostPort != 0 ? netSktxHostPort: HTTP_PORT;
 		m_PlaygroundHttpHost = (const char *) netSktxHostName;
-		if ( m_DevHttpHost != m_PlaygroundHttpHost) //probably wrong
+		if ( strcmp(m_DevHttpHost, m_PlaygroundHttpHost) != 0)
 			m_PlaygroundHttpServerIP = getIPForHost(m_PlaygroundHttpHost);
 		else
 			m_PlaygroundHttpServerIP = m_DevHttpServerIP;
@@ -382,12 +386,26 @@ void CSidekickNet::queueSktxRefresh()
 	}
 }
 
-void CSidekickNet::queueCSDBDownload( char * filePath)
-{
-	m_isCSDBDownloadQueued = true;
-	m_queueDelay = 0;
-	m_CSDBDownloadPath = filePath;
-	//logger->Write( "queueCSDBDownload", LogNotice, "download path: >%s<", m_CSDBDownloadPath);
+char * CSidekickNet::getCSDBDownloadFilename(){
+	return m_CSDBDownloadFilename;
+}
+
+u8 CSidekickNet::getCSDBDownloadLaunchType(){
+	u8 type = 0;
+	if ( strcmp( m_CSDBDownloadExtension, "crt") == 0 )
+	{
+		type = 9;
+		logger->Write ("CSidekickNet::getCSDBDownloadLaunchType", LogNotice, "CRT detected: >%s<",m_CSDBDownloadExtension);
+	}
+//	else if ( strcmp( m_CSDBDownloadExtension, "d64" ) == 0)
+//			type = 9999;
+	else //prg
+	{
+		type = 40;
+		logger->Write ("CSidekickNet::getCSDBDownloadLaunchType", LogNotice, "PRG detected: >%s<",m_CSDBDownloadExtension);
+	}
+	//type=9;
+	return type;
 }
 
 void CSidekickNet::handleQueuedNetworkAction()
@@ -450,8 +468,11 @@ void CSidekickNet::handleQueuedNetworkAction()
 
 		else if (m_isCSDBDownloadQueued)
 		{
+			logger->Write( "handleQueuedNetworkAction", LogNotice, "m_CSDBDownloadPath: %s", m_CSDBDownloadPath);		
 			m_isCSDBDownloadQueued = false;
 			getCSDBBinaryContent( m_CSDBDownloadPath );
+			//m_CSDBDownloadPath = (char*)"";
+			//m_CSDBDownloadFilename = (char*)"";
 			m_effortsSinceLastEvent = 0;
 			m_isSktxKeypressQueued = false;
 		}
@@ -475,7 +496,20 @@ boolean CSidekickNet::isPRGDownloadReady()
 	boolean bTemp = m_isPRGDownloadReady;
 	if ( m_isPRGDownloadReady){
 		m_isPRGDownloadReady = false;
-		//this is only necessary as long as we don't have the concept
+		if ( m_bSaveCSDBDownload2SD )
+		{
+			logger->Write( "isPRGDownloadReady", LogNotice, 
+				"Now trying to write downloaded file to SD card, bytes to write: %i", prgSizeLaunch
+			);
+			writeFile( logger, DRIVE, m_CSDBDownloadSavePath, (u8*) prgDataLaunch, prgSizeLaunch );
+			/*
+			logger->Write( "isPRGDownloadReady", LogNotice, 
+				"written %s", const_cast<const char*>(m_CSDBDownloadSavePath)
+			);*/
+			
+			m_bSaveCSDBDownload2SD = false;
+		}
+		//unmount - this is only necessary as long as we don't have the concept
 		//to mount the filesystem once and for all during runtime
 		unmountSDDrive();
 		//m_tryFilesystemRemount = true;
@@ -516,11 +550,19 @@ CNetConfig * CSidekickNet::GetNetConfig(){
 CIPAddress CSidekickNet::getIPForHost( const char * host )
 {
 	assert (m_isActive);
+	unsigned attempts = 0;
 	CIPAddress ip;
-	if (!m_DNSClient.Resolve (host, &ip))
-		logger->Write ("CSidekickNet::getIPForHost", LogWarning, "Cannot resolve: %s",host);
-	else
-		logger->Write ("CSidekickNet::getIPForHost", LogNotice, "DNS resolve ok for: %s",host);
+	while ( attempts < 3)
+	{
+		attempts++;
+		if (!m_DNSClient.Resolve (host, &ip))
+			logger->Write ("CSidekickNet::getIPForHost", LogWarning, "Cannot resolve: %s",host);
+		else
+		{
+			logger->Write ("CSidekickNet::getIPForHost", LogNotice, "DNS resolve ok for: %s",host);
+			break;
+		}
+	}
 	return ip;
 }
 
@@ -553,7 +595,7 @@ boolean CSidekickNet::UpdateTime(void)
 //file is being read and stored on the sd card
 boolean CSidekickNet::CheckForSidekickKernelUpdate()
 {
-	if ( m_DevHttpHost == 0 )
+	if ( strcmp(m_DevHttpHost, "") == 0 )
 	{
 		logger->Write( "CSidekickNet::CheckForSidekickKernelUpdate", LogNotice, 
 			"Skipping check: Update server is not defined."
@@ -561,7 +603,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 		return false;
 	}
 	/*
-	if ( m_SidekickKernelUpdatePath == 0 )
+	if ( strcmp( m_SidekickKernelUpdatePath,"") == 0 )
 	{
 		logger->Write( "CSidekickNet::CheckForSidekickKernelUpdate", LogNotice, 
 			"Skipping check: HTTP update path is not defined."
@@ -570,13 +612,7 @@ boolean CSidekickNet::CheckForSidekickKernelUpdate()
 	}*/
 	assert (m_isActive);
 	unsigned iFileLength = 0;
-	char * pFileBuffer = new char[nDocMaxSize+1];	// +1 for 0-termination
-	if (pFileBuffer == 0)
-	{
-		logger->Write( "CSidekickNet::CheckForFirmwareUpdate", LogError, "Cannot allocate document buffer");
-		return false;
-	}
-
+	char pFileBuffer[nDocMaxSize+1];	// +1 for 0-termination
 	unsigned type = 0;
 	if ( m_SidekickKernelUpdatePath == 264 ) type = 1;
 		 
@@ -613,7 +649,7 @@ void CSidekickNet::getCSDBContent( const char * fileName, const char * filePath)
 void CSidekickNet::getCSDBBinaryContent( char * filePath ){
 	assert (m_isActive);
 	unsigned iFileLength = 0;
-	unsigned char prgDataLaunchTemp[ 65536 ];
+	unsigned char prgDataLaunchTemp[ 1025*1024 ]; // TODO do we need this?
 	if (HTTPGet ( m_CSDBServerIP, CSDB_HOST, 443, (char *) filePath, (char *) prgDataLaunchTemp, iFileLength)){
 		m_isPRGDownloadReady = true;
 		prgSizeLaunch = iFileLength;
@@ -682,12 +718,7 @@ void CSidekickNet::updateSktxScreenContent(){
 		m_sktxScreenContent = (unsigned char *) msgNoConnection; //FIXME: there's a memory leak in here
 		return;
 	}
-	char * pResponseBuffer = new char[4097];
-	if (pResponseBuffer == 0)
-	{
-		logger->Write( "updateSktxScreenContent", LogError, "Cannot allocate document buffer");
-		return;
-	}
+	char pResponseBuffer[4097]; //maybe turn this into member var when creating new sktx class?
   CString path = "/sktx.php?";
 	
 	if ( m_sktxSession < 1){
@@ -714,19 +745,48 @@ void CSidekickNet::updateSktxScreenContent(){
 		if ( m_sktxResponseLength > 0 )
 		{
 			//logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document m_sktxResponseLength: %i", m_sktxResponseLength);
-			//pResponseBuffer[m_sktxResponseLength-1] = '\0';
 			m_sktxResponseType = pResponseBuffer[0];
 			if ( m_sktxResponseType == 2) // url for binary download, e. g. csdb
 			{
+				
+				u8 tmpUrlLength = pResponseBuffer[1];
+				u8 tmpFilenameLength = pResponseBuffer[2];
+				m_bSaveCSDBDownload2SD = ((int)pResponseBuffer[3] == 1);
+				char CSDBDownloadPath[256];
+				char CSDBFilename[256];
+				char extension[3];
 				//cut off first 14 chars of URL: http://csdb.dk
-				char CSDBDownloadPath[2048] = "";
-				memcpy( CSDBDownloadPath, &pResponseBuffer[ 1 + 14  ], m_sktxResponseLength -14 +1);
-				//CSDBDownloadPath[m_sktxResponseLength] = '\0';
-				//logger->Write( "updateSktxScreenContent", LogNotice, "download path: >%s<", CSDBDownloadPath);
+				//TODO add sanity checks here
+				memcpy( CSDBDownloadPath, &pResponseBuffer[ 4 + 14  ], tmpUrlLength-14 );//m_sktxResponseLength -14 +1);
+				logger->Write( "updateSktxScreenContent", LogNotice, "download path: >%s<", CSDBDownloadPath);
+				memcpy( CSDBFilename, &pResponseBuffer[ 4 + tmpUrlLength  ], tmpFilenameLength );
+				logger->Write( "updateSktxScreenContent", LogNotice, "filename: >%s<", CSDBFilename);
+				memcpy( extension, &pResponseBuffer[ m_sktxResponseLength -3 ], 3);
+				logger->Write( "updateSktxScreenContent", LogNotice, "extension: >%s<", extension);
+
+				logger->Write( "updateSktxScreenContent", LogNotice, "filename: >%s<", CSDBFilename);
+
+				CString savePath;
+				if (m_bSaveCSDBDownload2SD)
+				{
+					savePath = "SD:";
+					if ( strcmp(extension,"prg") == 0)
+						savePath.Append( (const char *) "PRG/" );
+					else if ( strcmp(extension,"crt") == 0)
+						savePath.Append( (const char *) "CRT/" );
+					else if ( strcmp(extension,"d64") == 0)
+						savePath.Append( (const char *) "D64/" );
+					savePath.Append( CSDBFilename);
+				}
 				m_sktxResponseLength = 1;
 				m_sktxScreenContent = (unsigned char * ) pResponseBuffer;
 				m_sktxScreenPosition = 1;
-				queueCSDBDownload( CSDBDownloadPath );
+				m_isCSDBDownloadQueued = true;
+				m_queueDelay = 0;
+				m_CSDBDownloadPath = CSDBDownloadPath;
+				m_CSDBDownloadExtension = extension;
+				m_CSDBDownloadFilename = CSDBFilename;
+				m_CSDBDownloadSavePath = savePath;
 			}
 			else
 			{
@@ -734,7 +794,6 @@ void CSidekickNet::updateSktxScreenContent(){
 				m_sktxScreenPosition = 1;
 			}
 		}
-		pResponseBuffer = 0;
 		//logger->Write( "updateSktxScreenContent", LogNotice, "HTTP Document content: '%s'", m_sktxScreenContent);
 		
 	}
@@ -858,7 +917,6 @@ CString CSidekickNet::getSysMonInfo()
 {
 	CString m_sysMonInfo = "";
 	m_sysMonInfo.Append("rbpi: cpu temp: ");
-	//const char * test = atoi( CpuTemp );
 	CString Number; 
 	Number.Format ("%02d", m_sysMonCPUTemp);
 	m_sysMonInfo.Append( Number );

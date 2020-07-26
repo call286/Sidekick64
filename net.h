@@ -44,7 +44,7 @@
 #include <circle-mbedtls/tlssimplesupport.h>
 
 #ifdef WITH_WLAN
-#include <fatfs/ff.h>
+//#include <fatfs/ff.h>
 #include <wlan/bcm4343.h>
 #include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
 #endif
@@ -82,12 +82,12 @@ public:
 	void queueFrameRequest();
 	void queueSktxKeypress( int );
 	void queueSktxRefresh();
-	void queueCSDBDownload( char *);
 	void handleQueuedNetworkAction();
 	void setSidekickKernelUpdatePath( unsigned type);
 	void getCSDBContent( const char *, const char *);
 	void getCSDBBinaryContent( char *);
 	void getCSDBLatestReleases();
+	u8 getCSDBDownloadLaunchType();
 	boolean isAnyNetworkActionQueued();
 	boolean isPRGDownloadReady();
 	boolean isDevServerConfigured(){ return m_DevHttpHost != 0;};
@@ -96,8 +96,8 @@ public:
 	boolean IsSktxScreenContentEndReached();
 	boolean IsSktxScreenToBeCleared();
 	boolean IsSktxScreenUnchanged();
-  char * getNetworkActionStatusMessage();
-	unsigned char * getSktxScreenContent(){ return m_sktxScreenContent; };
+	char * getNetworkActionStatusMessage();
+  unsigned char * getSktxScreenContent(){ return m_sktxScreenContent; };
 	unsigned char * GetSktxScreenContentChunk( u16 & startPos, u8 &color );
 	CString getTimeString();
 	CNetConfig * GetNetConfig();
@@ -109,7 +109,7 @@ public:
 	void launchSktxSession();
 	void redrawSktxScreen();
 	void updateSystemMonitor( size_t, unsigned);
-
+	char * getCSDBDownloadFilename();
 private:
 	
 	boolean Prepare ( void );
@@ -151,6 +151,10 @@ private:
 	unsigned char * m_sktxScreenContent;
 	char * m_sktxSessionID;
 	char * m_CSDBDownloadPath;
+	char * m_CSDBDownloadExtension;
+	char * m_CSDBDownloadFilename;
+	CString m_CSDBDownloadSavePath;
+	boolean m_bSaveCSDBDownload2SD;
 	TMachineModel m_PiModel;
 	unsigned char m_sktxScreenContentChunk[8192];
 	const char * m_DevHttpHost;
@@ -167,8 +171,6 @@ private:
 	unsigned m_sktxKey;
 	unsigned m_sktxSession;
 	unsigned m_videoFrameCounter;
-	//const char * m_sysMonInfo;
-	//CString m_sysMonInfo;
 	size_t m_sysMonHeapFree;
 	unsigned m_sysMonCPUTemp;
 };

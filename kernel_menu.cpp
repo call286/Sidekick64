@@ -60,7 +60,10 @@ static u32 prgSize AAA;
 static unsigned char prgData[ 65536 ] AAA;
 
 u32 prgSizeLaunch AAA;
-unsigned char prgDataLaunch[ 65536 ] AAA;
+//increasing size of prgDataLaunch so that we
+//can either store a prg or a crt in it
+//unsigned char prgDataLaunch[ 65536 ] AAA;
+unsigned char prgDataLaunch[ 1025*1024 ] AAA;
 
 // CBM80 to launch the menu
 static unsigned char cart_pool[ 16384 + 128 ] AAA;
@@ -343,7 +346,8 @@ void CKernelMenu::Run( void )
 
 		#ifdef WITH_NET
 		if ( m_SidekickNet.isPRGDownloadReady()){
-			launchKernel = 40;
+			launchKernel = m_SidekickNet.getCSDBDownloadLaunchType();
+			strcpy(FILENAME, m_SidekickNet.getCSDBDownloadFilename());
 			lastChar = 0xfffffff;
 		}
 		#endif
@@ -562,7 +566,8 @@ int main( void )
 	extern void KernelKernalRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME );
 	extern void KernelGeoRAMRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu );
 	extern void KernelLaunchRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, bool hasData = false, u8 *prgDataExt = NULL, u32 prgSizeExt = 0 );
-	extern void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME );
+	extern void KernelEFRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, bool hasData = false, u8 *crtDataExt = NULL, u32 crtSizeExt = 0 );
+	
 	extern void KernelFC3Run( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME = NULL );
 	extern void KernelAR6Run( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, char *FILENAME = NULL );
 	extern void KernelSIDRun( CGPIOPinFIQ m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, bool hasData = false, u8 *prgDataExt = NULL, u32 prgSizeExt = 0 );
@@ -647,7 +652,10 @@ int main( void )
 			}
 			break;
 		case 5:
-			KernelEFRun( kernel.m_InputPin, &kernel, FILENAME );
+			KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, false, NULL, 0 );
+			break;
+		case 9:
+			KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, true, prgDataLaunch, prgSizeLaunch );
 			break;
 		case 6:
 			KernelFC3Run( kernel.m_InputPin, &kernel );
