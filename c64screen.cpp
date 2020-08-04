@@ -615,7 +615,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		if ( k == 139 /* F6 */ )
 		{
 			menuScreen = MENU_NETWORK;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 			return;
 		}
 #endif
@@ -1194,7 +1194,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		if ( k == 136 /* F7 */ || k == 139 /* F6 */)
 		{
 			menuScreen = MENU_MAIN;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 			return;
 		}
 		if ( k == 'x' || k == 'X')
@@ -1203,7 +1203,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 			{
 				pSidekickNet->redrawSktxScreen();
 				menuScreen = MENU_SKTX;
-				handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+				handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 				return;
 			}
 		}
@@ -1234,7 +1234,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		if ( k == 136 /* F7 */ || k == 139 /* F6 */)
 		{
 			menuScreen = MENU_MAIN;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 			return;
 		}
 		/*
@@ -1280,7 +1280,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		{
 			//jump to network menu from config menu - do we really need this?
 			menuScreen = MENU_NETWORK;
-			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal );
+			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 			return;
 		}		
 #endif
