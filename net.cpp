@@ -471,8 +471,6 @@ void CSidekickNet::handleQueuedNetworkAction()
 			logger->Write( "handleQueuedNetworkAction", LogNotice, "m_CSDBDownloadPath: %s", m_CSDBDownloadPath);		
 			m_isCSDBDownloadQueued = false;
 			getCSDBBinaryContent( m_CSDBDownloadPath );
-			//m_CSDBDownloadPath = (char*)"";
-			//m_CSDBDownloadFilename = (char*)"";
 			m_effortsSinceLastEvent = 0;
 			m_isSktxKeypressQueued = false;
 		}
@@ -502,11 +500,9 @@ boolean CSidekickNet::isPRGDownloadReady()
 				"Now trying to write downloaded file to SD card, bytes to write: %i", prgSizeLaunch
 			);
 			writeFile( logger, DRIVE, m_CSDBDownloadSavePath, (u8*) prgDataLaunch, prgSizeLaunch );
-			/*
-			logger->Write( "isPRGDownloadReady", LogNotice, 
-				"written %s", const_cast<const char*>(m_CSDBDownloadSavePath)
-			);*/
-			
+			m_CSDBDownloadSavePath = "";
+			m_CSDBDownloadPath = (char*)"";
+			m_CSDBDownloadFilename = (char*)"";
 			m_bSaveCSDBDownload2SD = false;
 		}
 		//unmount - this is only necessary as long as we don't have the concept
