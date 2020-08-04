@@ -1143,8 +1143,11 @@ void printSKTXScreen()
 	injectPOKE( 53280, skinValues.SKIN_MENU_BORDER_COLOR );
 	injectPOKE( 53281, skinValues.SKIN_MENU_BACKGROUND_COLOR );
 	if ( skinFontLoaded )
+		injectPOKE( 53272, 30 ); else
+		injectPOKE( 53272, 23 ); 
+/*	if ( skinFontLoaded )
 		injectPOKE( 53272, 28 ); else
-		injectPOKE( 53272, 21 ); 
+		injectPOKE( 53272, 21 ); */
 }
 	
 #endif
