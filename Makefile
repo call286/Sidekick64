@@ -23,7 +23,7 @@ CPPFLAGS += -DGIT_HASH="\"$(GIT_HASH)\"" -DCOMPILE_TIME="\"$(COMPILE_TIME)\"" -D
 
 EXTRACLEAN = OLED/*.o resid/*.o OLED/*.d resid/*.d
 
-OBJS = lowlevel_arm64.o gpio_defs.o helpers.o latch.o oled.o ./OLED/ssd1306xled.o ./OLED/num2str.o 
+OBJS = lowlevel_arm64.o gpio_defs.o helpers.o latch.o oled.o ./OLED/ssd1306xled.o ./OLED/ssd1306xled8x16.o ./OLED/num2str.o 
 
 ### MENU C64/C128 ###
 ifeq ($(kernel), menu)
