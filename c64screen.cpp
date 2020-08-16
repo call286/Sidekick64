@@ -1394,6 +1394,9 @@ void printMainMenu()
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	#ifdef WITH_NET
+	printC64( 1, 22, pSidekickNet->getSysMonInfo(0), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	#endif
 
 	//char b[20];
 	//extern u32 temperature;
@@ -1562,12 +1565,8 @@ void printNetworkScreen()
 
 	const u32 x = 1;
 	
-	CString strTimeDate = "";
-	strTimeDate.Append( pSidekickNet->getTimeString());
-	
-	CString strSysMon = "";
-	strSysMon.Append( pSidekickNet->getSysMonInfo());
-
+	//CString strTimeDate = "";
+	//strTimeDate.Append( pSidekickNet->getTimeString());
 	
 	CString strIpAdress   = "IP address:      "; 
 	CString strNetMask    = "Netmask:         "; 
@@ -1644,8 +1643,10 @@ void printNetworkScreen()
 	printC64( x+1, y1+15, "You are running Sidekick on a", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
 	printC64( x+1, y1+16, pSidekickNet->getRaspiModelName(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	printC64( x+1, y1+18, "System time", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( x+1, y1+17, strSysMon, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-	printC64( x+1, y1+19, strTimeDate, skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	//printC64( x+1, y1+18, "System time           Uptime", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( x+1, y1+17, pSidekickNet->getSysMonInfo(0), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( x+1, y1+19, pSidekickNet->getTimeString(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	//printC64(x+22, y1+19, pSidekickNet->getUptime(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 	
 	printC64( x+28, 24, "Circle " CIRCLE_VERSION_STRING, skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
 	
@@ -1693,7 +1694,7 @@ void printSKTXScreen()
 			pSidekickNet->ResetSktxScreenContentChunks();
 		}
 	}
-	printC64( 1, 24, pSidekickNet->getSysMonInfo(), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
+	printC64( 1, 24, pSidekickNet->getSysMonInfo(0), skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 
 	startInjectCode();
 	injectPOKE( 53280, skinValues.SKIN_MENU_BORDER_COLOR );
