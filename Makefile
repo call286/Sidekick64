@@ -79,6 +79,7 @@ endif
 
 endif
 
+#remark building menu20 will fail in this fork - but it is too early to fix it now
 ifeq ($(kernel), menu20)
 CFLAGS += -DCOMPILE_MENU=1
 OBJS += kernel_menu20.o crt.o dirscan.o vic20config.o vic20screen.o mygpiopinfiq.o  tft_st7789.o
