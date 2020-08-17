@@ -209,7 +209,7 @@ void CKernelLaunch::Run( void )
 	CACHE_PRELOADL2KEEP( &prgData[ prgSizeBelowA000 + 2 ] );
 	CACHE_PRELOADL2KEEP( &prgData[ 0 ] );
 
-	#ifdef WITH_NET		
+	#ifdef WITH_NET
 	unsigned netDelay = 90000000;
 	#endif
 	
@@ -231,19 +231,23 @@ void CKernelLaunch::Run( void )
 
 		asm volatile ("wfi");
 
-		#ifdef WITH_NET		
-		netDelay--;
-		if (netDelay == 0 )
+		#ifdef WITH_NET
+		if ( pSidekickNet->IsRunning() )
 		{
-			netDelay = 30;
-			m_InputPin.DisableInterrupt();
-			m_InputPin.DisconnectInterrupt();
-			EnableIRQs();
-			//pSidekickNet->updateSystemMonitor( m_Memory.GetHeapFreeSpace(HEAP_ANY), m_CPUThrottle.GetTemperature());
-			pSidekickNet->handleQueuedNetworkAction();
-			DisableIRQs();
-			m_InputPin.ConnectInterrupt( FIQ_HANDLER, FIQ_PARENT );
-			m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+			netDelay--;
+			if (netDelay == 0 )
+			{
+				netDelay = 30;
+				m_InputPin.DisableInterrupt();
+				m_InputPin.DisconnectInterrupt();
+				EnableIRQs();
+				//kernelMenu.updateSystemMonitor();
+				//pSidekickNet->updateSystemMonitor( m_Memory.GetHeapFreeSpace(HEAP_ANY), m_CPUThrottle.GetTemperature());
+				pSidekickNet->handleQueuedNetworkAction();
+				DisableIRQs();
+				m_InputPin.ConnectInterrupt( FIQ_HANDLER, FIQ_PARENT );
+				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+			}
 		}
 		#endif
 		
