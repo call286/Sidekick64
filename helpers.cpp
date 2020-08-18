@@ -32,11 +32,13 @@
 // file reading
 int readFile( CLogger *logger, const char *DRIVE, const char *FILENAME, u8 *data, u32 *size )
 {
+#ifndef WITH_NET
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	// get filesize
 	FILINFO info;
@@ -68,9 +70,11 @@ int readFile( CLogger *logger, const char *DRIVE, const char *FILENAME, u8 *data
 	if ( f_close( &file ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot close file" );
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif
 	
 	return 1;
 }
@@ -103,12 +107,14 @@ int getFileSize( CLogger *logger, const char *DRIVE, const char *FILENAME, u32 *
 // file writing
 int writeFile( CLogger *logger, const char *DRIVE, const char *FILENAME, u8 *data, u32 size )
 {
+	
+#ifndef WITH_NET
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot mount drive: %s", DRIVE );
-
+#endif
 	// open file
 	FIL file;
 	u32 result = f_open( &file, FILENAME, FA_WRITE | FA_CREATE_ALWAYS );
@@ -128,10 +134,11 @@ int writeFile( CLogger *logger, const char *DRIVE, const char *FILENAME, u8 *dat
 	if ( f_close( &file ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot close file" );
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif
 	
 	return 1;
 }
-
