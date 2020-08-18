@@ -543,11 +543,15 @@ void insertDirectoryContents( int node, char *basePath, int listAll )
 
 void scanDirectories( char *DRIVE )
 {
+	
+#ifndef WITH_NET
+	
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	u32 head = 0;
 	nDirEntries = 0;
@@ -577,18 +581,24 @@ void scanDirectories( char *DRIVE )
 
 	//insertDirectoryContents( 0, "SD:" );
 
+#ifndef WITH_NET
+
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif		
 }
 
 void scanDirectories264( char *DRIVE )
 {
+#ifndef WITH_NET
+	
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	u32 head = 0;
 	nDirEntries = 0;
@@ -596,8 +606,9 @@ void scanDirectories264( char *DRIVE )
 	APPEND_SUBTREE( "D264", "SD:D264", 0 )
 	APPEND_SUBTREE( "PRG264", "SD:PRG264", 0 )
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif
 }
-
