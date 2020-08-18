@@ -359,11 +359,15 @@ void readDirectory( const char *DIRPATH, DIRENTRY *d, s32 *n, u32 parent = 0xfff
 
 void scanDirectories( char *DRIVE )
 {
+	
+#ifndef WITH_NET
+	
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	u32 head;
 	nDirEntries = 0;
@@ -383,18 +387,24 @@ void scanDirectories( char *DRIVE )
 	APPEND_SUBTREE( "PRG128", "SD:PRG128", 0 )
 	APPEND_SUBTREE( "CART128", "SD:CART128", 1 )
 
+#ifndef WITH_NET
+
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif		
 }
 
 void scanDirectories264( char *DRIVE )
 {
+#ifndef WITH_NET
+	
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	u32 head;
 	nDirEntries = 0;
@@ -402,8 +412,9 @@ void scanDirectories264( char *DRIVE )
 	APPEND_SUBTREE( "D264", "SD:D264", 0 )
 	APPEND_SUBTREE( "PRG264", "SD:PRG264", 0 )
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiMenu", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif
 }
-

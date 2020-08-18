@@ -337,6 +337,10 @@ boolean CKernelMenu::Initialize( void )
 	// read launch code
 	u32 size = 0;
 
+	#ifdef WITH_NET
+		m_SidekickNet.mountSDDrive();
+	#endif
+
 	cartCBM80 = (unsigned char *)( ((u64)&cart_pool+64) & ~63 );
 	readFile( logger, (char*)DRIVE, (char*)FILENAME_CBM80, cartCBM80, &size );
 
