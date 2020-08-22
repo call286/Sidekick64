@@ -48,6 +48,7 @@ int readCRTHeader( CLogger *logger, CRT_HEADER *crtHeader, const char *DRIVE, co
 {
 	CRT_HEADER header;
 
+#ifndef WITH_NET
 	FATFS m_FileSystem;
 
 	// mount file system
@@ -56,6 +57,7 @@ int readCRTHeader( CLogger *logger, CRT_HEADER *crtHeader, const char *DRIVE, co
 		//logger->Write( "RPiFlash-CRTHeader", LogNotice, "Cannot mount drive: %s", DRIVE );
 		return -10;
 	}
+#endif
 
 	// get filesize
 	FILINFO info;
@@ -67,7 +69,9 @@ int readCRTHeader( CLogger *logger, CRT_HEADER *crtHeader, const char *DRIVE, co
 	result = f_open( &file, FILENAME, FA_READ | FA_OPEN_EXISTING );
 	if ( result != FR_OK )
 	{
+#ifndef WITH_NET
 		f_mount( 0, DRIVE, 0 );
+#endif
 		//logger->Write( "RPiFlash-CRTHeader", LogNotice, "Cannot open file: %s", FILENAME );
 		return -12;
 	}
@@ -92,12 +96,14 @@ int readCRTHeader( CLogger *logger, CRT_HEADER *crtHeader, const char *DRIVE, co
 		return -14;
 	}
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 	{
 		//logger->Write( "RPiFlash-CRTHeader", LogNotice, "Cannot unmount drive: %s", DRIVE );
 		return -15;
 	}
+#endif
 
 	// now "parse" the file which we already have in memory
 	u8 *crt = rawCRT;
@@ -140,11 +146,13 @@ void readCRTFile( CLogger *logger, CRT_HEADER * crtHeader, const char *DRIVE, co
 
 void readCRTFileSimple( CLogger *logger, const char *DRIVE, const char *FILENAME, u8 * rawCRT, u32 & filesize )
 {
+#ifndef WITH_NET	
 	FATFS m_FileSystem;
 
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiFlash", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	// get filesize
 	FILINFO info;
@@ -170,9 +178,11 @@ void readCRTFileSimple( CLogger *logger, const char *DRIVE, const char *FILENAME
 	if ( f_close( &file ) != FR_OK )
 		logger->Write( "RaspiFlash", LogPanic, "Cannot close file" );
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiFlash", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif		
 }
 	
 void parseCRTInMemory( CLogger *logger, CRT_HEADER *crtHeader, u8 *flash, volatile u8 *bankswitchType, volatile u32 *ROM_LH, volatile u32 *nBanks, bool getRAW, u8 * rawCRT, u32 & filesize )
@@ -439,13 +449,15 @@ void writeChanges2CRTFile( CLogger *logger, const char *DRIVE, const char *FILEN
 	u32 nBanks;
 
 	CRT_HEADER header;
-	FATFS m_FileSystem;
 
 	logger->Write( "RaspiFlash", LogNotice, "saving modified CRT file", DRIVE );
 
+#ifndef WITH_NET
+	FATFS m_FileSystem;
 	// mount file system
 	if ( f_mount( &m_FileSystem, DRIVE, 1 ) != FR_OK )
 		logger->Write( "RaspiFlash", LogPanic, "Cannot mount drive: %s", DRIVE );
+#endif
 
 	// get filesize
 	FILINFO info;
@@ -499,9 +511,11 @@ void writeChanges2CRTFile( CLogger *logger, const char *DRIVE, const char *FILEN
 	if ( header.type != 32 )
 	{
 		logger->Write( "RaspiFlash", LogNotice, "no EF CRT" );
+		#ifndef WITH_NET
 		// unmount file system
 		if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 			logger->Write( "RaspiFlash", LogPanic, "Cannot unmount drive: %s", DRIVE );
+		#endif
 		return;
 	}
 
@@ -608,9 +622,11 @@ void writeChanges2CRTFile( CLogger *logger, const char *DRIVE, const char *FILEN
 	if ( f_close( &file ) != FR_OK )
 		logger->Write( "RaspiFlash", LogPanic, "Cannot close file" );
 
+#ifndef WITH_NET
 	// unmount file system
 	if ( f_mount( 0, DRIVE, 0 ) != FR_OK )
 		logger->Write( "RaspiFlash", LogPanic, "Cannot unmount drive: %s", DRIVE );
+#endif		
 }
 
 
