@@ -351,6 +351,10 @@ boolean CKernelMenu::Initialize( void )
 	u32 size = 0;
 
 	#ifdef WITH_NET
+		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.setSidekickKernelUpdatePath( 64 );
+		m_SidekickNet.checkForSupportedPiModel();	
 		m_SidekickNet.mountSDDrive();
 	#endif
 
@@ -402,9 +406,6 @@ boolean CKernelMenu::Initialize( void )
 	} 
 
 	#ifdef WITH_NET
-		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
-		//TODO: this should be done in constructor of SideKickNet
-		m_SidekickNet.setSidekickKernelUpdatePath( 64 );
 		if ( m_SidekickNet.ConnectOnBoot() ){
 			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 			if (bNetOK){
@@ -607,7 +608,8 @@ void CKernelMenu::Run( void )
 				
 
 				//boolean bFilesystemHasChanged = false;
-				if ( m_SidekickNet.isDownloadReady()){
+				m_SidekickNet.isDownloadReady();
+				if ( m_SidekickNet.isDownloadReadyForLaunch()){
 					u32 launchKernelTmp = m_SidekickNet.getCSDBDownloadLaunchType();
 					if (launchKernelTmp > 0)
 					{
@@ -616,6 +618,7 @@ void CKernelMenu::Run( void )
 						strcpy(menuItemStr, m_SidekickNet.getCSDBDownloadFilename());
 						lastChar = 0xfffffff;
 					}
+					m_SidekickNet.cleanupDownloadData();
 					//else
 					//	bFilesystemHasChanged = true; //only for d64
 				}
