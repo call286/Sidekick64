@@ -590,7 +590,6 @@ void CKernelMenu::Run( void )
 				
 
 				//boolean bFilesystemHasChanged = false;
-				m_SidekickNet.isDownloadReady();
 				if ( m_SidekickNet.isDownloadReadyForLaunch()){
 					u32 launchKernelTmp = m_SidekickNet.getCSDBDownloadLaunchType();
 					if (launchKernelTmp > 0)
@@ -604,6 +603,7 @@ void CKernelMenu::Run( void )
 					//else
 					//	bFilesystemHasChanged = true; //only for d64
 				}
+				m_SidekickNet.checkForFinishedDownload();
 				
 				DisableIRQs();
 				m_InputPin.ConnectInterrupt( this->FIQHandler, this );
