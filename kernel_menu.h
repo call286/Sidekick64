@@ -127,9 +127,12 @@ public:
 
 	void Run( void );
 	void updateSystemMonitor();
-
+	boolean isRebootRequested();
+	
 private:
 	static void FIQHandler( void *pParam );
+	void RelaxInterrupts( void );
+	
 public:
 	// do not change this order
 	CMemorySystem		m_Memory;
