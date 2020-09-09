@@ -27,6 +27,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <circle/chainboot.h>
 
 #include "kernel_menu.h"
 #include "dirscan.h"
@@ -420,6 +421,12 @@ u32 updateLogo = 0;
 unsigned char tftC128Logo[ 240 * 240 * 2 ];
 extern unsigned char tftBackground[ 240 * 240 * 2 ];
 
+void CKernelMenu::RelaxInterrupts( void )
+{
+	m_InputPin.DisableInterrupt();
+	m_InputPin.DisconnectInterrupt();
+	EnableIRQs();
+}
 
 void CKernelMenu::Run( void )
 {
@@ -493,7 +500,7 @@ void CKernelMenu::Run( void )
 	}
 
 	// wait forever
-	while ( true )
+	while ( !isRebootRequested() )
 	{
 		if ( first && nBytesRead < 32 && c64CycleCount > 1000000 )
 		{
@@ -588,8 +595,11 @@ void CKernelMenu::Run( void )
 		}
 	}
 
+	RelaxInterrupts();
+	pScheduler->Sleep (1);
+
 	// and we'll never reach this...
-	m_InputPin.DisableInterrupt();
+	//m_InputPin.DisableInterrupt();
 }
 
 void CKernelMenu::FIQHandler (void *pParam)
@@ -748,6 +758,15 @@ void CKernelMenu::FIQHandler (void *pParam)
 	OUTPUT_LATCH_AND_FINISH_BUS_HANDLING
 }
 
+boolean CKernelMenu::isRebootRequested(){
+#ifdef WITH_NET
+	if ( m_SidekickNet.isRebootRequested())
+		return true;
+	else
+#endif	
+	return false;
+
+}
 
 #ifdef WITH_NET
 void CKernelMenu::updateSystemMonitor ()
@@ -756,6 +775,7 @@ void CKernelMenu::updateSystemMonitor ()
 }
 #endif
 
+/*
 void mainMenu()
 {
 	CKernelMenu kernel;
@@ -764,7 +784,7 @@ void mainMenu()
 	//setLatchFIQ( LATCH_LEDO );
 	prepareOutputLatch();
 	outputLatch();
-}
+}*/
 
 int main( void )
 {
@@ -786,11 +806,12 @@ int main( void )
 	extern u32 octaSIDMode;
 
 
-	while ( true )
+	while ( !kernel.isRebootRequested() )
 	{
 		latchSetClearImm( LATCH_LED1, 0 );
 
 		kernel.Run();
+		if ( kernel.isRebootRequested() ) break;
 
 		latchSetClearImm( LATCH_LED0, LATCH_RESET | LATCH_ENABLE_KERNAL );
 		SET_GPIO( bNMI | bDMA ); 
@@ -897,5 +918,8 @@ int main( void )
 		}
 	}
 
-	return EXIT_HALT;
+	logger->Write( "RaspiMenu", LogNotice, "Rebooting..." );
+	if (!IsChainBootEnabled())
+		reboot ();
+	return EXIT_REBOOT;
 }
