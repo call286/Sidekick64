@@ -200,7 +200,11 @@ int main (void)
     while ( 1 )
     {
         // sendKeypress
-        key = cgetc();
+        if (kbhit() != 0)
+          key = cgetc();
+        else
+          key = 92; //pound key, unused
+
         if ( key == 29 && *((char *)(0x0427)) != 0 )
         {
             __asm__ ("lda #$0a");
