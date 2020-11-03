@@ -742,7 +742,7 @@ startHereAfterReset:
 				#endif
 		#endif
 
-				//problem: wegen dem innern do-while kann nCyclesEmulated tatsächlich größer als cycleCount werden -> dann ist cyclesToEmulate 0 oder negativ.
+				//problem: wegen dem innern do-while kann nCyclesEmulated tatsaechlich groesser als cycleCount werden -> dann ist cyclesToEmulate 0 oder negativ.
 				//frage: warum laufen wir zu lange innen und was macht das mit der emulation?
 
 /*				if ( cyclesToEmulate > cyclesToNextSample )
@@ -1293,8 +1293,13 @@ void CKernel::FIQHandler (void *pParam)
 		if ( d1 >= (s32)PWMRange ) d1 = (s32)PWMRange - 1;
 		if ( d2 < 0 ) d2 = 0;
 		if ( d2 >= (s32)PWMRange ) d2 = (s32)PWMRange - 1;*/
+		#if RASPI >= 4
+		write32( ARM_PWM1_DAT1, d1 );
+		write32( ARM_PWM1_DAT2, d2 );
+		#else
 		write32( ARM_PWM_DAT1, d1 );
 		write32( ARM_PWM_DAT2, d2 );
+		#endif
 		RESET_CPU_CYCLE_COUNTER
 		return;
 	} 
