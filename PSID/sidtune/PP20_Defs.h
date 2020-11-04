@@ -22,7 +22,7 @@
 #ifndef PP_DECOMPRESSOR_DEFS_H
 #define PP_DECOMPRESSOR_DEFS_H
 
-#include "../SidPlay/sidtypes.h"
+#include "../sidplay/sidtypes.h"
 
 #ifdef HAVE_EXCEPTIONS
   #define PP20_HAVE_EXCEPTIONS
