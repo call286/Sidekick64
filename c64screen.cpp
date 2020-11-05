@@ -1212,7 +1212,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		{
 			pSidekickNet->requestReboot();
 		}
-		
+		/*
 		else if ( k == 'u' || k == 'U')
 		{
 			if (pSidekickNet->IsRunning())
@@ -1220,7 +1220,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 				pSidekickNet->queueKernelUpdate();
 				setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
 			}
-		}
+		}*/
 		else if ( k == 'd' || k == 'D')
 		{
 				if ( errorMsg != NULL ) errorMsg = NULL;
