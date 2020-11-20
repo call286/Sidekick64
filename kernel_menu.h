@@ -114,7 +114,7 @@ public:
 		m_InputPin( PHI2, GPIOModeInput, &m_Interrupt ),
 		m_EMMC( &m_Interrupt, &m_Timer, 0 )
 #ifdef WITH_NET		
-		,m_SidekickNet( &m_Interrupt, &m_Timer, &m_Scheduler, &m_EMMC )
+		,m_SidekickNet( &m_Interrupt, &m_Timer, &m_Scheduler, &m_EMMC, this )
 #endif
 	{
 	}
@@ -128,6 +128,7 @@ public:
 	void Run( void );
 	void updateSystemMonitor();
 	boolean isRebootRequested();
+	void doCacheWellnessTreatment();
 	
 private:
 	static void FIQHandler( void *pParam );
