@@ -296,6 +296,13 @@ boolean CKernelMenu::Initialize( void )
 	// read launch code
 	u32 size = 0;
 
+	#ifdef WITH_NET
+		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
+		//TODO: this should be done in constructor of SideKickNet
+		m_SidekickNet.checkForSupportedPiModel();	
+		m_SidekickNet.mountSDDrive();
+	#endif
+
 	readFile( logger, (char*)DRIVE, (char*)FILENAME_CBM80, cartCBM80, &size );
 
 	cartL1 = (unsigned char *)( ((u64)&cart_pool+64) & ~63 );
@@ -336,13 +343,9 @@ boolean CKernelMenu::Initialize( void )
 	} 
 
 	#ifdef WITH_NET
-		logger->Write ("SidekickKernel", LogNotice, "Compiled on: " COMPILE_TIME ", Git branch: " GIT_BRANCH ", Git hash: " GIT_HASH);
-		//TODO: this should be done in constructor of SideKickNet
-		m_SidekickNet.setSidekickKernelUpdatePath( 264 );
 		if ( m_SidekickNet.ConnectOnBoot() ){
 			boolean bNetOK = bOK ? m_SidekickNet.Initialize() : false;
 			if (bNetOK){
-				//m_SidekickNet.CheckForSidekickKernelUpdate();
 			  m_SidekickNet.UpdateTime();
 			}
 		}
@@ -363,6 +366,8 @@ boolean CKernelMenu::Initialize( void )
 // cache warmup
 
 volatile u8 forceRead;
+
+static void *pFIQ = NULL;
 
 __attribute__( ( always_inline ) ) inline void warmCache( void *fiqh, bool screen=true )
 {
@@ -503,6 +508,7 @@ void CKernelMenu::Run( void )
 						m_InputPin.DisableInterrupt();
 						m_InputPin.DisconnectInterrupt();
 						EnableIRQs();
+						updateSystemMonitor();
 						m_SidekickNet.handleQueuedNetworkAction();
 					
 						DisableIRQs();
@@ -526,6 +532,18 @@ void CKernelMenu::Run( void )
 	m_InputPin.DisableInterrupt();
 }
 
+void CKernelMenu::doCacheWellnessTreatment(){
+	logger->Write( "RaspiMenu", LogNotice, "doCacheWellnessTreatment" );
+	
+	CleanDataCache();
+	InvalidateDataCache();
+	InvalidateInstructionCache();
+	pFIQ = (void*)this->FIQHandler;
+	warmCache( pFIQ );
+	DELAY(1<<18);
+	warmCache( pFIQ );
+	DELAY(1<<18);
+}
 
 void CKernelMenu::FIQHandler (void *pParam) {}
 
@@ -626,16 +644,22 @@ get_out:
 	RESET_CPU_CYCLE_COUNTER
 }
 
+boolean CKernelMenu::isRebootRequested(){
+#ifdef WITH_NET
+	if ( m_SidekickNet.isRebootRequested())
+		return true;
+	else
+#endif	
+	return false;
 
-void mainMenu()
-{
-	CKernelMenu kernel;
-	if ( kernel.Initialize() )
-		kernel.Run();
-	setLatchFIQ( LATCH_LED0 );
-	prepareOutputLatch();
-	outputLatch();
 }
+
+#ifdef WITH_NET
+void CKernelMenu::updateSystemMonitor ()
+{
+	m_SidekickNet.updateSystemMonitor( m_Memory.GetHeapFreeSpace(HEAP_ANY), m_CPUThrottle.GetTemperature());
+}
+#endif
 
 int main( void )
 {
@@ -646,11 +670,12 @@ int main( void )
 	extern void KernelSIDRun( CGPIOPinFIQ2 m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME, bool hasData = false, u8 *prgDataExt = NULL, u32 prgSizeExt = 0 );
 	extern void KernelRLRun( CGPIOPinFIQ2 m_InputPin, CKernelMenu *kernelMenu, const char *FILENAME_KERNAL, const char *FILENAME, const char *FILENAME_RAM, u32 sizeRAM, bool hasData = false, u8 *prgDataExt = NULL, u32 prgSizeExt = 0 );
 
-	while ( true )
+	while ( !kernel.isRebootRequested() )
 	{
 		latchSetClearImm( LATCH_LED1, 0 );
 
 		kernel.Run();
+		if ( kernel.isRebootRequested() ) break;
 
 		latchSetClearImm( LATCH_LED0, LATCH_RESET | LATCH_ENABLE_KERNAL );
 		SET_GPIO( bNMI | bDMA ); 
