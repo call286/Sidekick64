@@ -27,6 +27,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <circle/chainboot.h>
 
 #include "kernel_menu264.h"
 #include "dirscan.h"
@@ -270,7 +271,7 @@ boolean CKernelMenu::Initialize( void )
 
 	if ( bOK ) bOK = m_Interrupt.Initialize();
 	if ( bOK ) bOK = m_Timer.Initialize();
-	m_EMMC.Initialize();
+	if ( bOK ) bOK = m_EMMC.Initialize();
 
 #ifdef COMPILE_MENU_WITH_SOUND
 	pTimer = &m_Timer;
@@ -367,8 +368,6 @@ boolean CKernelMenu::Initialize( void )
 
 volatile u8 forceRead;
 
-static void *pFIQ = NULL;
-
 __attribute__( ( always_inline ) ) inline void warmCache( void *fiqh, bool screen=true )
 {
 	if ( screen )
@@ -440,7 +439,7 @@ void CKernelMenu::Run( void )
 	}
 
 	// wait forever
-	while ( true )
+	while ( !isRebootRequested() )
 	{
 		asm volatile ("wfi");
 
@@ -464,6 +463,7 @@ void CKernelMenu::Run( void )
 			lastChar = 0xfffffff;
 			doneWithHandling = 1;
 			updateMenu = 0;
+
 			
 			if ( launchKernel == 5 ) 
 			// either: launch CRT, no need to call an external RPi-kernel
@@ -501,21 +501,17 @@ void CKernelMenu::Run( void )
 				}
 			} else
 			{
-				//to test this, please modify the ifdef and the code inside
-				#ifdef WITH_NET
-					if (m_SidekickNet.isAnyNetworkActionQueued())
-					{
-						m_InputPin.DisableInterrupt();
-						m_InputPin.DisconnectInterrupt();
-						EnableIRQs();
-						updateSystemMonitor();
-						m_SidekickNet.handleQueuedNetworkAction();
-					
-						DisableIRQs();
-						m_InputPin.ConnectInterrupt( this->FIQHandler, this );
-						m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
-					}
-				#endif
+		#ifdef WITH_NET
+				m_InputPin.DisableInterrupt();
+				m_InputPin.DisconnectInterrupt();
+				EnableIRQs();
+				updateSystemMonitor();
+				m_SidekickNet.handleQueuedNetworkAction();
+				//doCacheWellnessTreatment();
+				DisableIRQs();
+				m_InputPin.ConnectInterrupt( m_InputPin.FIQHandler, this );
+				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+		#endif
 				
 				CACHE_PRELOAD_DATA_CACHE( c64screen, 1024, CACHE_PRELOADL2STRM );
 				CACHE_PRELOAD_DATA_CACHE( c64color, 1024, CACHE_PRELOADL2STRM );
@@ -533,16 +529,21 @@ void CKernelMenu::Run( void )
 }
 
 void CKernelMenu::doCacheWellnessTreatment(){
-	logger->Write( "RaspiMenu", LogNotice, "doCacheWellnessTreatment" );
+	//stil undecided what's the best to do here for 264
+	//logger->Write( "RaspiMenu", LogNotice, "doCacheWellnessTreatment begin" );
 	
-	CleanDataCache();
-	InvalidateDataCache();
-	InvalidateInstructionCache();
-	pFIQ = (void*)this->FIQHandler;
-	warmCache( pFIQ );
-	DELAY(1<<18);
-	warmCache( pFIQ );
-	DELAY(1<<18);
+	//CleanDataCache();
+	//InvalidateDataCache();
+	//InvalidateInstructionCache();
+//	warmCache( (void*)this->FIQHandler );	
+//	DELAY(1<<18);
+//	warmCache( (void*)this->FIQHandler );	
+//	DELAY(1<<18);
+	warmCache( (void*)this->FIQHandler );
+	warmCache( (void*)this->FIQHandler );
+	warmCache( (void*)this->FIQHandler );
+//	logger->Write( "RaspiMenu", LogNotice, "doCacheWellnessTreatment end" );
+	
 }
 
 void CKernelMenu::FIQHandler (void *pParam) {}
@@ -733,5 +734,8 @@ int main( void )
 		}
 	}
 
-	return EXIT_HALT;
+	logger->Write( "RaspiMenu", LogNotice, "Rebooting..." );
+	if (!IsChainBootEnabled())
+		reboot ();
+	return EXIT_REBOOT;
 }
