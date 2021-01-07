@@ -33,6 +33,63 @@
 extern void detectC128();
 extern void detectVIC();
 
+void bootstrapCustomNMIHandler()
+{
+  //cmd 1 - lda - first byte (opcode)
+  __asm__ ("lda #$a9");
+  __asm__ ("sta $c000");
+
+  //cmd 1 - lda - second byte (payload)
+  __asm__ ("lda #$01");
+  __asm__ ("sta $c001");
+
+  //cmd 2 - sta - first byte (opcode)
+  __asm__ ("lda #$8d");
+  __asm__ ("sta $c002");
+
+  //cmd 2 - sta - second byte (lsb 0f)
+  __asm__ ("lda #$0f");
+  __asm__ ("sta $c003");
+
+  //cmd 2 - sta - third byte (msb c0)
+  __asm__ ("lda #$c0");
+  __asm__ ("sta $c004");
+
+//DEBUG: change border color
+/*
+  //cmd 3 - lda - first byte (opcode)
+  __asm__ ("lda #$a9");
+  __asm__ ("sta $c005");
+
+  //cmd 3 - lda - second byte (payload)
+  __asm__ ("lda #$02");
+  __asm__ ("sta $c006");
+
+  //cmd 3 - sta - first byte (opcode)
+  __asm__ ("lda #$8d");
+  __asm__ ("sta $c007");
+
+  //cmd 3 - sta - second byte (lsb 20)
+  __asm__ ("lda #$20");
+  __asm__ ("sta $c008");
+
+  //cmd 3 - sta - third byte (msb d0)
+  __asm__ ("lda #$d0");
+  __asm__ ("sta $c009");
+*/
+
+  //cmd 4 - RTI dec 64 / hex 40
+  __asm__ ("lda #$40");
+  __asm__ ("sta $c005");
+  
+  //NMI handler will now be expected at $c0000
+  __asm__ ("lda #$00");
+  __asm__ ("sta $0318");
+  __asm__ ("lda #$c0");
+  __asm__ ("sta $0319");
+
+}
+
 void updateScreen()
 {
     __asm__ ("pha");
@@ -64,7 +121,7 @@ void updateScreen()
     __asm__ ("sta $fe");
 
 
-	__asm__ ("ldy #$00");
+  __asm__ ("ldy #$00");
 __asm__ ("loop:");
     __asm__ ("lda $df00");
     __asm__ ("sta ($fb),y");
@@ -197,27 +254,40 @@ int main (void)
     *((char *)(0xdf01)) = 0; // dummy keypress
     updateScreen();
 
+    bootstrapCustomNMIHandler();
+
     while ( 1 )
     {
-        // sendKeypress
-        if (kbhit() != 0)
-          key = cgetc();
-        else
-          key = 92; //pound key, unused
-
-        if ( key == 29 && *((char *)(0x0427)) != 0 )
+        while ( kbhit() == 0 && *((char *)(0xc00f)) == 0 )
         {
-            __asm__ ("lda #$0a");
-            __asm__ ("ldx #$20");
-            __asm__ ("loop:");
-            __asm__ ("sta $d850,x");
-            __asm__ ("dex");
-            __asm__ ("bne loop");
+          //neither a keypress nor an NMI occured
         }
-
-        wireDetection();
-        *((char *)(0xdf01)) = key;
-        updateScreen();
+        
+        if (*((char *)(0xc00f)) == 0)
+        {
+          // sendKeypress
+          key = cgetc();
+          if ( key == 29 && *((char *)(0x0427)) != 0 )
+          {
+              __asm__ ("lda #$0a");
+              __asm__ ("ldx #$20");
+              __asm__ ("loop:");
+              __asm__ ("sta $d850,x");
+              __asm__ ("dex");
+              __asm__ ("bne loop");
+          }
+          wireDetection();
+          *((char *)(0xdf01)) = key;
+          updateScreen();
+        }
+        else
+        {
+          *((char *)(0xc00f)) = 0; //reset update flag set by nmi handler
+          wireDetection();
+          updateScreen();
+          //DEBUG: change border color
+          //*((char *)(0xd020)) = 1;
+        }
     }
 
     return 0;
