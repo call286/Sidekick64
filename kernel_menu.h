@@ -142,7 +142,11 @@ public:
 	
 private:
 	static void FIQHandler( void *pParam );
-	void RelaxInterrupts( void );
+	void enableFIQInterrupt();
+	void DisableFIQInterrupt();
+#ifdef WITH_NET
+	void handleNetwork();
+#endif
 	
 public:
 	// do not change this order
@@ -167,6 +171,7 @@ public:
 	CEMMCDevice			m_EMMC;
 #ifdef WITH_NET	
 	CSidekickNet    m_SidekickNet;
+	unsigned        m_timeStampOfLastNetworkEvent;
 #endif
 };
 
