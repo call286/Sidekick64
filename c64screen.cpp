@@ -1205,7 +1205,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		{
 			//if (pSidekickNet->IsRunning())
 			{
-				pSidekickNet->enteringSktpScreen();
+				pSidekickNet->enteringSktpScreen(); //just for the refresh
 				menuScreen = MENU_SYSTEMINFO;
 				handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 				return;
@@ -1271,6 +1271,12 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		*/
 		else
 		{
+			//virtual key press
+			//joystick button press
+			if ( k == 92 )
+			{
+				k = VK_RETURN;
+			}
 			//the user has actually manually pressed a key on the Commodore keyboard
 			pSidekickNet->queueSktpKeypress(k);
 		}
