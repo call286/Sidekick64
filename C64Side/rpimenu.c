@@ -185,7 +185,7 @@ void wireDetection()
 int main (void)
 {
     char key, x, firstHit;
-	unsigned char /*joy1, joy1prev, */joy2, joy2prev;
+  unsigned char /*joy1, joy1prev, */joy2, joy2prev;
 
     *(unsigned char*)(0x01) = 15;
 
@@ -198,7 +198,7 @@ int main (void)
     copyCharset();
     updateScreen();
 
-	joy_install( joy_static_stddrv );
+  joy_install( joy_static_stddrv );
 
     wireDetection();
     *((char *)(0xdf01)) = 0; // dummy keypress
@@ -208,9 +208,9 @@ int main (void)
     *((char *)(0xdf01)) = 0; // dummy keypress
     updateScreen();
 
-		instNMIHandler();
+    instNMIHandler();
 
-	joy2prev = 255;
+    joy2prev = 255;
     while ( 1 )
     {
 		key = 0;
@@ -294,6 +294,10 @@ int main (void)
 			for ( x = 0; x < 15; x++ )
 				waitvsync();
     }
+    if ( firstHit )
+      for ( x = 0; x < 15; x++ )
+        waitvsync();
+  }
 
-    return 0;
+  return 0;
 }
