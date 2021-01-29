@@ -210,6 +210,7 @@ void CKernelLaunch::Run( void )
 	CACHE_PRELOADL2KEEP( &prgData[ 0 ] );
 
 	#ifdef WITH_NET
+	pSidekickNet->setCurrentKernel( (char*)"l" );
 	unsigned netDelay = _playingPSID ? 900000000: 300; //TODO: improve this
 	#endif
 	
