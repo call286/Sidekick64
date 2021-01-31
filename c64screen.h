@@ -51,7 +51,9 @@ extern void settingsGetGEORAMInfo( char *filename, u32 *size );
 extern void setErrorMsg( char * msg );
 extern void renderErrorMsg();
 extern void clearErrorMsg();
-
+#ifdef WITH_NET
+extern boolean isAutomaticScreenRefreshNeeded();
+#endif
 
 
 #endif
