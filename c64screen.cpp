@@ -1210,6 +1210,13 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 				return;
 			}
 		}
+		if ( k == 'w' || k == 'W')
+		{
+			if (pSidekickNet->IsRunning() && !netEnableWebserver)
+			{
+				netEnableWebserver = true;
+			}
+		}
 		else if ( k == 's' || k == 'S')
 		{
 			//if (pSidekickNet->IsRunning())
@@ -1225,6 +1232,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 			if (!pSidekickNet->IsRunning())
 			{
 				pSidekickNet->queueNetworkInit();
+				clearErrorMsg();
 				setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
 			}
 		}
@@ -1672,6 +1680,9 @@ void printNetworkScreen()
 	{
 		printC64( x+1, y1+5, "You are connected.",   skinValues.SKIN_MENU_TEXT_ITEM, 0 );
 		printC64( x+1, y1+16, "X - Launch SKTP browser", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+		if (!netEnableWebserver)
+			printC64( x+1, y1+17, "W - Start web server", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+
 	}
 	else{
 		printC64( x+1, y1+4, "Network connection is inactive", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
@@ -1949,8 +1960,9 @@ void printSettingsScreen()
 
 void clearErrorMsg()
 {
+	if ( errorMsg != NULL && menuScreen == MENU_ERROR)
+		menuScreen = previousMenuScreen;
 	errorMsg = NULL;
-	menuScreen = previousMenuScreen;
 }
 
 void setErrorMsg( char * msg )
@@ -2004,6 +2016,8 @@ void renderErrorMsg()
 	printC64( 0, 12, errorMsg, skinValues.SKIN_ERROR_TEXT, 0, convert );
 	printC64( 0, 13, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
 	printC64( 0, 14, "\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8", skinValues.SKIN_ERROR_BAR, 0, 1 );
+	
+	menuScreen = previousMenuScreen;
 }
 
 #ifdef WITH_NET
