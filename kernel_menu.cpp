@@ -573,6 +573,9 @@ void CKernelMenu::Run( void )
 
 	#ifdef WITH_NET
 	m_timeStampOfLastNetworkEvent = 0;
+	m_SidekickNet.setCurrentKernel( (char*)'m' );
+	unsigned keepNMILow = 0;
+	unsigned lastAutoRefresh = 0;
 	#endif
 	
 	if ( !disableCart )
@@ -599,11 +602,6 @@ void CKernelMenu::Run( void )
 		SET_GPIO( bNMI | bDMA );
 		latchSetClearImm( LATCH_RESET, 0 );
 	}
-
-	#ifdef WITH_NET
-	m_SidekickNet.setCurrentKernel( (char*)'m' );
-	unsigned keepNMILow = 0;
-	#endif
 
 	// wait forever
 	while ( !isRebootRequested() )
@@ -673,6 +671,9 @@ void CKernelMenu::Run( void )
 			renderC64(); //puts the active menu page into the raspi memory
 			#ifdef WITH_NET
 			handleNetwork();
+			lastAutoRefresh = 0;
+//			if ( m_SidekickNet.isMenuScreenUpdateNeeded() )
+//				renderC64(); //puts the active menu page into the raspi memory
 			#endif
 			doneWithHandling = 1;
 			updateMenu = 0;
@@ -680,8 +681,36 @@ void CKernelMenu::Run( void )
 		#ifdef WITH_NET
 		else
 		{
-			if ( m_SidekickNet.isSKTPScreenActive() )
-				m_SidekickNet.queueSktpRefresh( 8 );
+			boolean timedRefresh = false;
+			if ( isAutomaticScreenRefreshNeeded() )
+			{
+				unsigned uptime = m_Timer.GetUptime();
+				if ( lastAutoRefresh == 0){
+					lastAutoRefresh = uptime;
+				}
+				else if ( uptime - lastAutoRefresh > 0 )
+				{
+					timedRefresh = true;
+					lastAutoRefresh = uptime;
+					DisableFIQInterrupt();
+					doneWithHandling = 0;
+					updateMenu = 1;
+					logger->Write( "SidekickMenu", LogNotice, "timed refresh happening" );
+					renderC64(); //puts the active menu page into the raspi memory
+					doCacheWellnessTreatment();
+					enableFIQInterrupt();
+					CLR_GPIO( bNMI );
+					doneWithHandling = 1;
+					updateMenu = 0;
+					keepNMILow = 1; //this means the duration of NMI going down is a little longer
+				}
+			}
+			else
+			{
+				lastAutoRefresh = 0;
+				if ( m_SidekickNet.isSKTPScreenActive() )
+					m_SidekickNet.queueSktpRefresh( 8 );
+			}
 			/*
 			if ( m_SidekickNet.IsRunning() && m_SidekickNet.isAnyNetworkActionQueued()){
 				DisableFIQInterrupt();
@@ -689,28 +718,30 @@ void CKernelMenu::Run( void )
 				enableFIQInterrupt();
 			}
 			else*/
-			if ( m_SidekickNet.isMenuScreenUpdateNeeded() )
+
+			if ( !timedRefresh )
 			{
-				//SET_GPIO( bNMI );
-				doneWithHandling = 0;
-				updateMenu = 1;
-				DisableFIQInterrupt();
-				logger->Write( "RaspiMenu", LogNotice, "MenuScreenUpdateNeeded => NMI" );
-				//render should be after disable fiq because then the stuff like 
-				//system clock, uptime and CPU temp are being updated
-				doCacheWellnessTreatment();
-				renderC64(); //puts the active menu page into the raspi memory
-				doCacheWellnessTreatment();
-				enableFIQInterrupt();
-				doneWithHandling = 1;
-				updateMenu = 0;
-				CLR_GPIO( bNMI );
-				keepNMILow = 1; //this means the duration of NMI going down is a little longer
-			}
-			else if ( ( m_SidekickNet.IsConnecting() || m_SidekickNet.IsRunning()) &&  ++m_timeStampOfLastNetworkEvent > 3000000)
-			{
-					handleNetwork(); //this makes the webserver respond quickly even when there is no keypress user action
-					//to improve performance here we could just call scheduler yield directly
+				if ( m_SidekickNet.isMenuScreenUpdateNeeded() )
+				{
+					DisableFIQInterrupt();
+					doneWithHandling = 0;
+					updateMenu = 1;
+					logger->Write( "SidekickMenu", LogNotice, "MenuScreenUpdateNeeded => NMI" );
+					//render should be after disable fiq because then the stuff like 
+					//system clock, uptime and CPU temp are being updated
+					renderC64(); //puts the active menu page into the raspi memory
+					doCacheWellnessTreatment();
+					enableFIQInterrupt();
+					CLR_GPIO( bNMI );
+					doneWithHandling = 1;
+					updateMenu = 0;
+					keepNMILow = 1; //this means the duration of NMI going down is a little longer
+				}
+				else if ( ( m_SidekickNet.IsConnecting() || m_SidekickNet.IsRunning()) &&  ++m_timeStampOfLastNetworkEvent > 3000000)
+				{
+						handleNetwork(); //this makes the webserver respond quickly even when there is no keypress user action
+						//to improve performance here we could just call scheduler yield directly
+				}
 			}
 		}
 		#endif
