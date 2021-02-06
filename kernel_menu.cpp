@@ -531,6 +531,7 @@ void CKernelMenu::handleNetwork()
 		//a status message is being put onto the screen for the user
 		m_SidekickNet.checkForFinishedDownload();
 	}
+	renderC64(); //puts the active menu page into the raspi memory
 	m_timeStampOfLastNetworkEvent = 0;
 	enableFIQInterrupt();
 }
@@ -687,12 +688,13 @@ void CKernelMenu::Run( void )
 			//the screen has to change (e.g. jump from page a to page b)
 			handleC64( lastChar, &launchKernel, FILENAME, filenameKernal, menuItemStr, &startForC128 );
 			lastChar = 0xfffffff;
-			renderC64(); //puts the active menu page into the raspi memory
 			#ifdef WITH_NET
 			handleNetwork();
 			lastAutoRefresh = 0;
 //			if ( m_SidekickNet.isMenuScreenUpdateNeeded() )
 //				renderC64(); //puts the active menu page into the raspi memory
+			#else
+			renderC64(); //puts the active menu page into the raspi memory
 			#endif
 			doneWithHandling = 1;
 			updateMenu = 0;
@@ -737,16 +739,9 @@ void CKernelMenu::Run( void )
 			else
 			{
 				lastAutoRefresh = 0;
-				if ( m_SidekickNet.isSKTPScreenActive() )
-					m_SidekickNet.queueSktpRefresh( 16 );
+//				if ( m_SidekickNet.isSKTPScreenActive() )
+//					m_SidekickNet.queueSktpRefresh( 16 );
 			}
-			/*
-			if ( m_SidekickNet.IsRunning() && m_SidekickNet.isAnyNetworkActionQueued()){
-				DisableFIQInterrupt();
-				m_SidekickNet.handleQueuedNetworkAction();
-				enableFIQInterrupt();
-			}
-			else*/
 
 			if ( !timedRefresh )
 			{
