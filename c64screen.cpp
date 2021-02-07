@@ -86,6 +86,7 @@ static const char SETTINGS_FILE[] = "SD:C64/special.cfg";
 u8 c64screen[ 40 * 25 + 1024 * 4 ]; 
 u8 c64color[ 40 * 25 + 1024 * 4 ]; 
 
+boolean errorSticky = false;
 char *errorMsg = NULL;
 
 char errorMessages[8][41] = {
@@ -1931,13 +1932,20 @@ void clearErrorMsg()
 	if ( errorMsg != NULL && menuScreen == MENU_ERROR)
 		menuScreen = previousMenuScreen;
 	errorMsg = NULL;
+	errorSticky = false;
 }
 
-void setErrorMsg( char * msg )
+void setErrorMsg( char * msg)
+{
+	setErrorMsg2( msg, false );
+}
+
+void setErrorMsg2( char * msg, boolean sticky = false )
 {
 	errorMsg = msg;
 	previousMenuScreen = menuScreen;
 	menuScreen = MENU_ERROR;
+	errorSticky = sticky;
 }
 
 void renderC64()
@@ -1984,6 +1992,11 @@ void renderErrorMsg()
 	printC64( 0, 12, errorMsg, skinValues.SKIN_ERROR_TEXT, 0, convert );
 	printC64( 0, 13, "                                        ", skinValues.SKIN_ERROR_TEXT, 0 );
 	printC64( 0, 14, "\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8\xf8", skinValues.SKIN_ERROR_BAR, 0, 1 );
+	
+	if (!errorSticky)
+	{
+		errorMsg = NULL;
+	}
 	
 	menuScreen = previousMenuScreen;
 }
