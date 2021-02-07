@@ -135,7 +135,7 @@ private:
 	void enableFIQInterrupt();
 	void DisableFIQInterrupt();
 #ifdef WITH_NET
-	void handleNetwork();
+	boolean handleNetwork( boolean);
 #endif
 	
 public:
