@@ -1086,7 +1086,12 @@ int main( void )
 		case 41:
 			playingPSID = 1; // intentionally no break
 		case 40: // launch something from a disk image or PRG in memory (e.g. a converted .SID-file)
+			#ifdef WITH_NET
 			logger->Write( "RaspiMenu", LogNotice, "filename from d64: %s", FILENAME );
+			if ( modeC128 && strstr( FILENAME, "128" ) )
+				startForC128 = 1;
+			#endif
+			
 			if ( subSID ) {
 				applySIDSettings();
 				if ( octaSIDMode )
