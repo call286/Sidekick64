@@ -40,6 +40,8 @@
 #include "kernel_menu.h"
 #include "PSID/psid64/psid64.h"
 
+const int VK_AT = 64;
+
 const int VK_F1 = 133;
 const int VK_F2 = 137;
 const int VK_F3 = 134;
@@ -453,9 +455,6 @@ int getMainMenuSelection( int key, char **FILE, int *addIdx, char *menuItemStr )
 	if ( key == VK_F1 ) { resetMenuState(1); return ACT_GEORAM;/* GEORAM */ } else
 	if ( key == VK_F6 ) { return ACT_SIDKICK_CFG; } else
 	if ( key == VK_F3 ) { resetMenuState(2); return ACT_SID;/* SID */ } else
-	//#ifdef WITH_NET
-	//if ( key == VK_F6 ) { resetMenuState(3); return ACT_NETWORK;/* Network */ } else
-	//#endif	
 	{
 		if ( key >= 'A' && key < 'A' + menuItems[ 2 ] ) // CRT
 		{
@@ -672,8 +671,8 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		}
 
 #ifdef WITH_NET
-		//entering the network menu from the main menu via F6
-		if ( k == VK_F6 )
+		//entering the network menu from the main menu via AT
+		if ( k == VK_AT )
 		{
 			menuScreen = MENU_NETWORK;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
@@ -1416,7 +1415,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 	if ( menuScreen == MENU_NETWORK )
 	{
 		//keypress handling while inside of open menu
-		if ( k == VK_F7 || k == VK_F6 )
+		if ( k == VK_F5 || k == VK_F7 || k == VK_AT )
 		{
 			menuScreen = MENU_MAIN;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
@@ -1466,6 +1465,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		}
 		*/
 		//get rid of this after implementing a proper error msg dialog
+		/*
 		else if ( k == 'd' || k == 'D')
 		{
 				if ( errorMsg != NULL ) errorMsg = NULL;
@@ -1477,11 +1477,12 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 				}
 				
 		}
+		*/
 	} else
 	if ( menuScreen == MENU_SKTP )
 	{
 	
-		if ( k == VK_F7 || k == VK_F6 )
+		if ( k == VK_F7 )
 		{
 			pSidekickNet->leavingSktpScreen();
 			menuScreen = MENU_MAIN;
@@ -1493,14 +1494,14 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 		{
 			//only needed temporarily for testing purposes
 			pSidekickNet->resetSktpSession();
-		}*/
+		}
 		else if ( k == 'd' || k == 'D')
 		{
 				//http errors might be displayed on top of sktp screen
 				//this assignment is a cheap trick to get rid of error popups
 				if ( errorMsg != NULL ) errorMsg = NULL;
 		}
-		/*
+		
 		else if (k == 92 )
 		{
 			//92 is pound key, this key is constantly sent by the rpimenu_net.prg
@@ -1548,13 +1549,15 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 			return;
 		}
 #ifdef WITH_NET
-		if ( k == VK_F6 )
+/*
+		if ( k == VK_AT )
 		{
 			//jump to network menu from config menu - do we really need this?
 			menuScreen = MENU_NETWORK;
 			handleC64( 0xffffffff, launchKernel, FILENAME, filenameKernal, menuItemStr );
 			return;
 		}		
+*/
 #endif
 		if ( ( ( k == 'n' || k == 'N' ) || ( k == 13 && curSettingsLine == 1 ) )&& typeInName == 0 )
 		{
@@ -1686,9 +1689,6 @@ void printMainMenu()
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	#ifdef WITH_NET
-	//printC64( 1, 0, pSidekickNet->getSysMonInfo(0), skinValues.SKIN_MENU_TEXT_SYSINFO, 0 );
-	#endif
 
 	//char b[20];
 	//extern u32 temperature;
@@ -1832,9 +1832,9 @@ void printMainMenu()
 	}
 
 	#ifdef WITH_NET
-			printC64( menuX[ 0 ], menuY[ 0 ]+4, "F6", skinValues.SKIN_MENU_TEXT_KEY, 0 );
+			printC64( menuX[ 0 ], menuY[ 0 ]+4, "AT", skinValues.SKIN_MENU_TEXT_KEY, 0 );
 			printC64( menuX[ 0 ]+3, menuY[ 0 ]+4, "Network", skinValues.SKIN_MENU_TEXT_ITEM, 0 );
-			ADD_JOY_ITEM( menuX[ 0 ], menuY[ 0 ]+4, 2, VK_F6 );
+			ADD_JOY_ITEM( menuX[ 0 ], menuY[ 0 ]+4, 2, VK_AT );
 	#endif
 
 	if ( joyIdx != - 1 )
@@ -1863,7 +1863,8 @@ void printNetworkScreen()
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( 0, 23, "            F7 Back to Menu             ", skinValues.SKIN_MENU_TEXT_HEADER, 0);
+	printC64( 12, 23, "F7", skinValues.SKIN_MENU_TEXT_FOOTER, 128, 0 );
 
 	const u32 x = 1;
 	
@@ -1957,7 +1958,9 @@ void printSystemInfoScreen()
 	clearC64();
 	//               "012345678901234567890123456789012345XXXX"
 	printC64( 0,  1, "   .- Sidekick64 -- Frenetic -.         ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
-	printC64( 0, 23, "           F6/F7 Back to Menu           ", skinValues.SKIN_MENU_TEXT_HEADER, 0 );
+	printC64( 0, 23, "            F7 Back to Menu             ", skinValues.SKIN_MENU_TEXT_HEADER, 0);
+	printC64( 12, 23, "F7", skinValues.SKIN_MENU_TEXT_FOOTER, 128, 0 );
+
 
 	const u32 x = 1;
 	u32 y1 = 3;
