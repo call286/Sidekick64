@@ -29,6 +29,10 @@
 */
 #include "kernel_launch264.h"
 
+#ifdef WITH_NET2
+extern CSidekickNet * pSidekickNet;
+#endif
+
 static u32	resetCounter, c64CycleCount, exitToMainMenu;
 
 // hack
@@ -124,6 +128,10 @@ void CKernelLaunch::Run( void )
 	// ready to go
 	latchSetClearImm( LATCH_RESET, 0 );
 
+	#ifdef WITH_NET2
+	pSidekickNet->setCurrentKernel( (char*)"l" );
+	unsigned netDelay = 300; //TODO: improve this
+	#endif
 
 	// wait forever
 	while ( true )
@@ -138,6 +146,42 @@ void CKernelLaunch::Run( void )
 			m_InputPin.DisconnectInterrupt();
 			return;
 		}*/
+		#endif
+
+		#ifdef WITH_NET2
+		if ( pSidekickNet->IsRunning() )
+		{
+			netDelay--;
+			if (netDelay == 0 )
+			{
+				netDelay = 300;
+				m_InputPin.DisableInterrupt();
+				m_InputPin.DisconnectInterrupt();
+				EnableIRQs();
+				
+				if ( pSidekickNet->isReturnToMenuRequired())
+					return;
+				
+				kernelMenu->updateSystemMonitor();
+				pSidekickNet->handleQueuedNetworkAction();
+				//pSidekickNet->requireCacheWellnessTreatment();
+
+
+				DisableIRQs();
+				m_InputPin.ConnectInterrupt( KernelLaunchFIQHandler, FIQ_PARENT );
+
+				// warm caches
+				launchPrepareAndWarmCache();
+
+				m_InputPin.EnableInterrupt ( GPIOInterruptOnRisingEdge );
+
+				// warm caches
+				// FIQ handler
+				//CACHE_PRELOAD_INSTRUCTION_CACHE( (void*)&FIQ_HANDLER, 1024 );
+				//FORCE_READ_LINEAR32( (void*)&FIQ_HANDLER, 1024 );
+
+			}
+		}
 		#endif
 
 		asm volatile ("wfi");
@@ -202,4 +246,3 @@ void KernelLaunchFIQHandler( void *pParam )
 
 	FINISH_BUS_HANDLING
 }
-
