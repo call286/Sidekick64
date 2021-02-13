@@ -1138,7 +1138,7 @@ int main( void )
 		case 5:
 			KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, false, NULL, 0 );
 			break;
-		case 11:
+		case 12:
 			KernelEFRun( kernel.m_InputPin, &kernel, FILENAME, menuItemStr, true, prgDataLaunch, prgSizeLaunch );
 			break;
 		case 6:
