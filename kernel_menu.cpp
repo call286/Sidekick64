@@ -502,9 +502,18 @@ void CKernelMenu::DisableFIQInterrupt( void )
 #ifdef WITH_NET
 boolean CKernelMenu::handleNetwork( boolean doRender)
 {
-	DisableFIQInterrupt();
-	//logger->Write( "RaspiMenu", LogNotice, "handleNetwork" );
-	
+	//handleC64 - processes the key the user has pressed to determine how 
+	//the screen has to change (e.g. jump from page a to page b)
+//	
+//	#ifndef WITH_WLAN
+//		handleC64( lastChar, &launchKernel, FILENAME, filenameKernal, menuItemStr, &startForC128 );
+//		DisableFIQInterrupt();
+//	#else
+//	#ifdef WITH_WLAN
+		DisableFIQInterrupt();
+		handleC64( lastChar, &launchKernel, FILENAME, filenameKernal, menuItemStr, &startForC128 );
+//	#endif
+
 	updateSystemMonitor();
 	if ( updateMenu == 1 && doRender && modeC128 )
 		m_SidekickNet.setC128Mode();
@@ -696,16 +705,16 @@ void CKernelMenu::Run( void )
 			}
 
 			startForC128 = 0;
-			//handleC64 - processes the key the user has pressed to determine how 
-			//the screen has to change (e.g. jump from page a to page b)
-			handleC64( lastChar, &launchKernel, FILENAME, filenameKernal, menuItemStr, &startForC128 );
-			lastChar = 0xfffffff;
 			#ifdef WITH_NET
 			handleNetwork( true );
 			lastAutoRefresh = 0;
 			#else
+			//handleC64 - processes the key the user has pressed to determine how 
+			//the screen has to change (e.g. jump from page a to page b)
+			handleC64( lastChar, &launchKernel, FILENAME, filenameKernal, menuItemStr, &startForC128 );
 			renderC64(); //puts the active menu page into the raspi memory
 			#endif
+			lastChar = 0xfffffff;
 			doneWithHandling = 1;
 			updateMenu = 0;
 		}
