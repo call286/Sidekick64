@@ -39,6 +39,21 @@
 
 #undef USE_VCHIQ_SOUND
 
+static int startVCHIQ = 0;
+
+u32 SAMPLERATE_ADJUSTED = SAMPLERATE;
+extern u32 nSamplesPrecompute;
+u32 trackSampleProgress;
+
+static s32 avgSamplesAvail = 0;
+static s32 avgCounter = 0;
+static u32 adjustRateAllowed = 0;
+static u32 targetSamplesAvail = 0, targetCount = 0;
+
+u32 fillSoundBuffer;
+extern bool CVCHIQ_CB_Manual;
+
+
 static const char DRIVE[] = "SD:";
 static const char FILENAME_SPLASH_RGB[] = "SD:SPLASH/sk64_sid_bg2.tga";
 static const char FILENAME_SPLASH_RGB2[] = "SD:SPLASH/sk64_sid_bg.tga";
