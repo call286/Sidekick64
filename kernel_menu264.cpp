@@ -47,6 +47,10 @@ static const char FILENAME_TFT_FONT[] = "SD:SPLASH/PXLfont88665b-RF2.3-C64sys.bi
 
 char FILENAME_LOGO_RGBA[128] = "SD:SPLASH/sk264_logo_blend.tga";
 
+#ifdef WITH_NET
+CSidekickNet *pSidekickNet;//used for c64screen to display net config params
+#endif
+
 static u32	disableCart     = 0;
 static u32	resetCounter    = 0;
 static u32	transferStarted = 0;
@@ -181,6 +185,11 @@ void deactivateCart()
 	latchSetClearImm( LED_DEACTIVATE_CART1_HIGH, LED_DEACTIVATE_CART1_LOW | LATCH_RESET | LATCH_ENABLE_KERNAL );
 	SET_GPIO( bGAME | bEXROM | bNMI | bDMA );
 
+	#ifdef WITH_NET
+	if (pSidekickNet != 0)
+		pSidekickNet->setCurrentKernel( (char*)"l" );	
+	#endif
+	
 	if ( screenType == 0 )
 	{
 		for ( int j = 255; j > 63; j -- )
@@ -219,7 +228,12 @@ void activateCart()
 	SETCLR_GPIO( bNMI, bCTRL257 );
 
 	DELAY( 1 << 20 );
-
+	
+	#ifdef WITH_NET
+	if (pSidekickNet != 0)
+		pSidekickNet->setCurrentKernel( (char*)"m" );	
+	#endif
+	
 	if ( screenType == 0 )
 	{
 		oledSetContrast( 255 );
@@ -241,10 +255,6 @@ CTimer				*pTimer;
 CScheduler			*pScheduler;
 CInterruptSystem	*pInterrupt;
 CVCHIQDevice		*pVCHIQ;
-#endif
-
-#ifdef WITH_NET
-CSidekickNet *pSidekickNet;//used for c64screen to display net config params
 #endif
 
 boolean CKernelMenu::Initialize( void )
@@ -392,6 +402,46 @@ void CKernelMenu::DisableFIQInterrupt( void )
 	EnableIRQs();
 }
 
+#ifdef WITH_NET
+boolean CKernelMenu::handleNetwork( boolean doRender)
+{
+	m_InputPin.DisableInterrupt();
+	m_InputPin.DisconnectInterrupt();
+	EnableIRQs();
+	updateSystemMonitor();
+	m_SidekickNet.handleQueuedNetworkAction();
+	
+	if ( m_SidekickNet.isDownloadReadyForLaunch()){
+		logger->Write( "RaspiMenu", LogNotice, "Download is ready for launch" );
+		u32 launchKernelTmp = m_SidekickNet.getCSDBDownloadLaunchType();
+		if (launchKernelTmp > 0)
+		{
+			launchKernel = launchKernelTmp;
+			strcpy(FILENAME, m_SidekickNet.getCSDBDownloadFilename());
+			//strcpy(menuItemStr, m_SidekickNet.getCSDBDownloadFilename());
+			lastChar = 0xfffffff;
+		}
+		m_SidekickNet.cleanupDownloadData(); //this also removes the status message
+	}
+	
+	//if there is an unsaved download we save it to sd card
+	//after the status message was rendered by checkForFinishedDownload
+	m_SidekickNet.checkForSaveableDownload();
+	
+	//when HTTP download is finished but we haven't saved it yet
+	//a status message is being put onto the screen for the user
+	m_SidekickNet.checkForFinishedDownload();
+	
+	m_timeStampOfLastNetworkEvent = 0;
+	
+	DisableIRQs();
+	m_InputPin.ConnectInterrupt( m_InputPin.FIQHandler, this );
+	m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+	
+	return doRender;
+}
+#endif
+
 void CKernelMenu::Run( void )
 {
 	nBytesRead		= 0;
@@ -509,36 +559,7 @@ void CKernelMenu::Run( void )
 			} else
 			{
 		#ifdef WITH_NET
-				m_InputPin.DisableInterrupt();
-				m_InputPin.DisconnectInterrupt();
-				EnableIRQs();
-				updateSystemMonitor();
-				m_SidekickNet.handleQueuedNetworkAction();
-				
-				if ( m_SidekickNet.isDownloadReadyForLaunch()){
-					logger->Write( "RaspiMenu", LogNotice, "Download is ready for launch" );
-					u32 launchKernelTmp = m_SidekickNet.getCSDBDownloadLaunchType();
-					if (launchKernelTmp > 0)
-					{
-						launchKernel = launchKernelTmp;
-						strcpy(FILENAME, m_SidekickNet.getCSDBDownloadFilename());
-						//strcpy(menuItemStr, m_SidekickNet.getCSDBDownloadFilename());
-						lastChar = 0xfffffff;
-					}
-					m_SidekickNet.cleanupDownloadData(); //this also removes the status message
-				}
-				
-				//if there is an unsaved download we save it to sd card
-				//after the status message was rendered by checkForFinishedDownload
-				m_SidekickNet.checkForSaveableDownload();
-				
-				//when HTTP download is finished but we haven't saved it yet
-				//a status message is being put onto the screen for the user
-				m_SidekickNet.checkForFinishedDownload();
-				
-				DisableIRQs();
-				m_InputPin.ConnectInterrupt( m_InputPin.FIQHandler, this );
-				m_InputPin.EnableInterrupt( GPIOInterruptOnRisingEdge );
+				handleNetwork( true );
 		#endif
 				
 				CACHE_PRELOAD_DATA_CACHE( c64screen, 1024, CACHE_PRELOADL2STRM );
@@ -549,6 +570,14 @@ void CKernelMenu::Run( void )
 				pullIRQ = 64;
 			}
 		}
+		else if ( ( m_SidekickNet.IsConnecting() || m_SidekickNet.IsRunning()) &&  ++m_timeStampOfLastNetworkEvent > 1500000)
+		{
+			if ( handleNetwork( false)) //this makes the webserver respond quickly even when there is no keypress user action
+			{
+			}
+		}
+
+		
 	#endif
 	}
 	
