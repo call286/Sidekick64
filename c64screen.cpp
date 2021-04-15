@@ -1459,7 +1459,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 				setErrorMsg( pSidekickNet->getNetworkActionStatusMessage() );
 			}
 		}
-		else if ( k == 't' || k == 'T')
+		else if ( k == 'm' || k == 'M')
 		{
 			if (pSidekickNet->IsRunning())
 			{
@@ -1878,7 +1878,7 @@ void printNetworkScreen()
 	CString strHostName   = "Hostname:           ";
 	CString strConnection = "Connection state:   ";
 	CString strWebserver  = "Webserver state:    ";
-	CString strUPModemEmu = "Modem emulation (T):";
+	CString strUPModemEmu = "Modem emulation (M):";
 	CString strHelper;
 	
 	if (strcmp(netSidekickHostname,"") != 0)
