@@ -216,7 +216,8 @@ void CKernelLaunch::Run( void )
 
 	pSidekickNet->setCurrentKernel( (char*)"l" );
 	unsigned netDelay = _playingPSID ? 900000000: 3000; //TODO: improve this
-	unsigned followUpDelay = (pSidekickNet->getModemEmuType() == 1) ? 200000 : 300;
+	unsigned followUpDelay = (pSidekickNet->getModemEmuType() == 1) ? 900000 : 300;
+	if ( pSidekickNet->usesWLAN() ) followUpDelay = 10 * followUpDelay;
 	#endif
 
 	// setup FIQ
@@ -360,7 +361,7 @@ void CKernelLaunch::Run( void )
 					return;
 				
 				kernelMenu->updateSystemMonitor();
-				if ( swiftLinkDirectNetAccess )
+				if ( swiftLinkDirectNetAccess && !pSidekickNet->usesWLAN())
 				{
 					//logger->Write( "sk", LogNotice, "swiftLinkDirectNetAccess");	
 					pSidekickNet->handleModemEmulation( false );
@@ -401,7 +402,7 @@ void CKernelLaunch::Run( void )
 						swiftLinkResponse = tmpOutput;
 						swiftLinkReceived[swiftLinkReceivedCounter++] = tmpOutput;
 						swiftLinkReceived[swiftLinkReceivedCounter] = '\0';
-						swiftLinkDoNMI = 10;// swiftLinkNmiDelay;
+						swiftLinkDoNMI = swiftLinkNmiDelay;
 					}
 				}
 				else
