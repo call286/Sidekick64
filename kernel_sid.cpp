@@ -1693,7 +1693,8 @@ void CKernel::FIQHandler (void *pParam)
 			#else
 			write32( ARM_PWM_DAT1, d1 );
 			write32( ARM_PWM_DAT2, d2 );
-			#endif			RESET_CPU_CYCLE_COUNTER
+			#endif
+			RESET_CPU_CYCLE_COUNTER
 			return;
 		} 
 	}
