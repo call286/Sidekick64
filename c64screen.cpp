@@ -1225,7 +1225,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 
 				s32 curC = c;
 
-				if ( (dir[ c ].f & DIR_FILE_IN_D64 && ((dir[ c ].f>>SHIFT_TYPE)&7) == 2) || dir[ c ].f & DIR_PRG_FILE || dir[ c ].f & DIR_CRT_FILE )
+				if ( (dir[ c ].f & DIR_FILE_IN_D64 && ((dir[ c ].f>>SHIFT_TYPE)&7) == 2) || dir[ c ].f & DIR_PRG_FILE || dir[ c ].f & DIR_CRT_FILE || dir[ c ].f & DIR_BIN_FILE )
 				{
 					while ( dir[ c ].parent != 0xffffffff )
 					{
@@ -1266,7 +1266,7 @@ void handleC64( int k, u32 *launchKernel, char *FILENAME, char *filenameKernal, 
 						return;
 					}
 
-					if ( dir[ curC ].f & DIR_CRT_FILE ) 
+					if ( dir[ curC ].f & DIR_CRT_FILE || dir[ curC ].f & DIR_BIN_FILE ) 
 					{
 						u32 err = 0;
 

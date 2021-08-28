@@ -502,7 +502,7 @@ void readDirectory( int mode, const char *DIRPATH, DIRENTRY *d, s32 *n, u32 pare
 			} else
 			if ( strstr( (char*)sort[ pos ].name, ".bin" ) > 0 || strstr( (char*)sort[ pos ].name, ".bin" ) > 0 )
 			{
-				d[ *n ].f = DIR_PRG_FILE;
+				d[ *n ].f = DIR_BIN_FILE;
 				d[ *n ].parent = parent;
 				d[ *n ].level = level;
 				( *n )++;
